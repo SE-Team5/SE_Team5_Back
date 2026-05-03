@@ -71,6 +71,18 @@ FLASK_PORT=5000
 DEBUG=True
 ```
 
+### 3-1단계: 이메일 인증 설정 (필수)
+
+회원가입의 이메일 인증 기능을 사용하려면 `backend/src/modules/auth/service.py` 파일에서 아래 값을 각자 본인 네이버 메일 계정 정보로 수정해야 합니다.
+
+```python
+SMTP_USER = 'your_id@naver.com'
+SMTP_PASSWORD = 'your_app_password'
+```
+
+위 값은 이메일 인증 메일을 실제로 발송할 때 사용됩니다. 저장소에 비밀번호를 남기고 싶지 않다면 실행 직전에만 바꾸고 다시 되돌려도 됩니다.
+
+
 ### 4단계: 데이터베이스 설정
 
 MySQL에서 데이터베이스 생성:
@@ -260,3 +272,36 @@ from . import routes
 ## 문의사항
 
 개발 중 구조 관련 문제가 생기면, 담당자에게 문의하세요.
+
+---
+
+## 프론트엔드 개발 서버 실행
+
+필요 조건: Node.js와 npm이 설치되어 있어야 합니다.
+
+- 개발 서버 실행 (Vite 기반):
+
+```bash
+# 프로젝트 루트에서
+npm install       # 처음 한 번만 실행
+npm run dev       # 개발 서버 시작 (기본 포트: 5173)
+```
+
+- 프로덕션 빌드 및 미리보기:
+
+```bash
+npm run build     # 프로덕션 빌드
+npm run preview   # 빌드된 결과를 로컬에서 미리보기
+```
+
+- 포트 변경이 필요하면 `VITE_PORT` 또는 `--port` 옵션을 사용하세요. 예:
+
+```bash
+# 윈도우 PowerShell 예시
+$env:VITE_PORT=3000; npm run dev
+
+# 또는
+npm run dev -- --port 3000
+```
+
+프론트엔드 서버가 정상적으로 실행되면 브라우저에서 `http://localhost:5173` (또는 지정한 포트)로 접속하세요.

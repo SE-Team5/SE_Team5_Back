@@ -23,3 +23,4 @@ class Config:
     
     # CORS
     CORS_ORIGINS = '*'
+    
