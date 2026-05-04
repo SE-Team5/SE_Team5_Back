@@ -13,15 +13,14 @@ pip install -r requirements.txt
 
 ## 환경 변수
 
-루트 [/.env.example](.env.example) 를 복사해서 [/.env](.env) 를 만들고, 예시 파일에 표시된 수정 부분만 바꾸면 됩니다.
+루트 [/.env.example](.env.example) 를 복사해서 [/.env](.env) 를 만들고, 아래 항목만 수정하면 됩니다.
 
-DB_PASSWORD=your_password_here	#본인의 DB 비밀번호
-DB_NAME=RIVO				#DB의 이름
-
-SMTP_USER=your_naver_email@naver.com		#인증 메일을 송신할 이메일	
-SMTP_PASSWORD=your_naver_app_password		#네이버 앱 비밀번호 (계정 비밀번호랑 다릅니다.)
-
-이렇게 표시된 부분만 적절히 바꾸면 됩니다.
+| 항목 | 수정 내용 | 비고 |
+| --- | --- | --- |
+| `DB_PASSWORD` | 본인의 MySQL 비밀번호 | DB 접속 정보 |
+| `DB_NAME` | `RIVO` 유지 | DB 이름 고정 |
+| `SMTP_USER` | 본인 네이버 이메일 | 인증 메일 발송 계정 |
+| `SMTP_PASSWORD` | 본인 네이버 앱 비밀번호 | 계정 비밀번호와 다름 |
 
 메일 인증은 네이버 이메일로만 가능합니다.
 
@@ -42,4 +41,4 @@ npm run dev
 ```
 
 
-# DB 관련 프롬프트를 작성할 때는 [database/RIVO_schema.sql](database/RIVO_schema.sql) 을 참고하도록 하면 됩니다. 노션에 올려둔 DB랑 똑같이 만들어놓은 .sql 파일입니다.
+DB 관련 프롬프트를 작성할 때는 [database/RIVO_schema.sql](database/RIVO_schema.sql) 을 참고하면 됩니다. 노션에 올려둔 DB 기준으로 만든 `.sql` 파일입니다.
