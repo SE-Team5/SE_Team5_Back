@@ -5,20 +5,25 @@ class QuizService:
     def __init__(self):
         self.repository = QuizRepository()
 
-    def get_new_quiz(self):
+    def get_new_quiz(self, limit=10):
         """사용자에게 제공할 퀴즈 세트 구성"""
-        words = self.repository.get_random_words()
+        words = self.repository.get_random_words(limit=limit)
         if not words:
             return {"status": "error", "message": "단어장에 단어가 부족합니다."}
         
-        # 퀴즈 형식에 맞게 데이터 가공 가능 (예: 보기 섞기 등)
         return {
             "status": "success",
-            "data": words
+            "data": {
+                "words": words,
+                "total": len(words),
+            }
         }
 
     def submit_result(self, user_no, total, correct):
         """퀴즈 결과 저장 로직"""
+        if total is None or correct is None:
+            return {"status": "error", "message": "퀴즈 결과가 올바르지 않습니다."}
+
         success = self.repository.save_quiz_result(user_no, total, correct)
         if success:
             return {"status": "success", "message": "결과가 성공적으로 저장되었습니다."}

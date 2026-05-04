@@ -1,4 +1,5 @@
 """Auth Service"""
+import os
 import smtplib
 import re
 import random
@@ -6,18 +7,21 @@ import string
 import time
 from email.message import EmailMessage
 from secrets import token_urlsafe
+from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 from .repository import AuthRepository
 
-# SMTP 설정: auth 폴더 안에서만 관리
-# 여기에 네이버 메일 계정 정보와 앱 비밀번호를 한 번만 넣어두면 됨
-SMTP_HOST = 'smtp.naver.com'
-SMTP_PORT = 587
-SMTP_USER = '각자의 네이버 메일 주소'
-SMTP_PASSWORD = '네이버 웹 비밀번호 (계정 비밀번호랑 다릅니다.)'
-SMTP_FROM = SMTP_USER
-SMTP_USE_TLS = True
-SMTP_USE_SSL = False
+# 프로젝트 루트의 .env를 읽어서 DB/SMTP 설정을 한 곳에서 관리
+ROOT_ENV_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', '.env')
+load_dotenv(ROOT_ENV_PATH)
+
+SMTP_HOST = os.getenv('SMTP_HOST', 'smtp.naver.com')
+SMTP_PORT = int(os.getenv('SMTP_PORT', '587'))
+SMTP_USER = os.getenv('SMTP_USER', '')
+SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
+SMTP_FROM = os.getenv('SMTP_FROM', SMTP_USER)
+SMTP_USE_TLS = os.getenv('SMTP_USE_TLS', 'True') == 'True'
+SMTP_USE_SSL = os.getenv('SMTP_USE_SSL', 'False') == 'True'
 
 # 이메일 인증 코드 저장소 (메모리)
 # 구조: {'email': {'code': '123456', 'created_at': timestamp, 'verified': False}}

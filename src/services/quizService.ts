@@ -1,7 +1,4 @@
-// Quiz Service - Mock implementation
-// Replace with actual API calls when connecting to Flask backend
-
-import { wordService, type Word } from './wordService'
+import { type Word } from './wordService'
 
 export type QuizType = 
   | 'korean-to-english-choice'
@@ -28,6 +25,8 @@ export interface QuizResult {
   }[]
 }
 
+const API_BASE_URL = 'http://localhost:5000/api/quiz'
+
 const quizTypes: QuizType[] = [
   'korean-to-english-choice',
   'korean-to-english-text',
@@ -53,11 +52,66 @@ function generateOptions(correctAnswer: string, allWords: Word[], isEnglish: boo
   return options.sort(() => Math.random() - 0.5)
 }
 
+type BackendWord = {
+  id?: string | number
+  english?: string
+  korean?: string
+  example?: string | null
+  term?: string
+  definition?: string
+  example_sentence?: string | null
+}
+
+type QuizStartResponse = {
+  status?: string
+  data?: {
+    words?: BackendWord[]
+    total?: number
+  } | BackendWord[]
+  words?: BackendWord[]
+}
+
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options?.headers || {}),
+    },
+    ...options,
+  })
+
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    const message = typeof data?.message === 'string' ? data.message : 'Request failed'
+    throw new Error(message)
+  }
+
+  return data as T
+}
+
+function toWord(word: BackendWord): Word {
+  return {
+    id: String(word.id ?? ''),
+    english: word.english ?? word.term ?? '',
+    korean: word.korean ?? word.definition ?? '',
+    example: word.example ?? word.example_sentence ?? undefined,
+  }
+}
+
+function extractWords(response: QuizStartResponse): Word[] {
+  const payload = Array.isArray(response.data)
+    ? response.data
+    : response.data?.words ?? response.words ?? []
+
+  return payload.map(toWord).filter(word => word.english && word.korean)
+}
+
 export const quizService = {
   async generateQuiz(wordCount: number): Promise<QuizQuestion[]> {
-    const words = await wordService.getRandomWords(wordCount)
-    const allWords = await wordService.getWords()
-    
+    const response = await request<QuizStartResponse>(`/start?limit=${wordCount}`)
+    const words = extractWords(response)
+    const allWords = words
+
     return words.map((word, index) => {
       const type = getRandomQuizType()
       const isKoreanToEnglish = type.startsWith('korean-to-english')
@@ -86,9 +140,16 @@ export const quizService = {
     return normalizedUserAnswer === normalizedCorrectAnswer
   },
 
-  async submitQuizResult(result: QuizResult): Promise<{ success: boolean }> {
-    // Mock submission - in real app, this would save to backend
-    await new Promise(resolve => setTimeout(resolve, 300))
-    return { success: true }
+  async submitQuizResult(result: QuizResult, userNo: number): Promise<{ success: boolean }> {
+    const response = await request<{ status?: string; success?: boolean }>(`/submit`, {
+      method: 'POST',
+      body: JSON.stringify({
+        userNo,
+        total: result.totalQuestions,
+        correct: result.correctAnswers,
+      }),
+    })
+
+    return { success: response.success ?? response.status === 'success' }
   }
 }

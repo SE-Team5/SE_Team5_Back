@@ -1,323 +1,225 @@
 """Wordbook Repository"""
-# repository.py
-from datetime import datetime
-from sqlalchemy import asc, desc, func
-from extensions import db
-from models import User, Word, UserWordStatus
+from math import ceil
+from db import db
+
+
+def _to_word_dict(row):
+    return {
+        "id": str(row["word_no"]),
+        "term": row["word_english"],
+        "definition": row["word_korean"],
+        "example": row.get("example_sentence"),
+        "memo": None,
+    }
 
 
 class UserRepository:
-
     @staticmethod
     def find_by_id(user_id) -> dict | None:
-        user = db.session.get(User, user_id)
-        if not user:
+        query = "SELECT user_no, email, daily_target_count FROM RIVO.users WHERE user_no = %s"
+        results = db.execute_query(query, (user_id,))
+        if not results:
             return None
+        user = results[0]
         return {
-            "id":                 user.id,
-            "email":              user.email,
-            "daily_target_count": user.daily_target_count,
+            "id": user["user_no"],
+            "email": user["email"],
+            "daily_target_count": user["daily_target_count"],
         }
 
 
 class WordRepository:
+    @staticmethod
+    def _build_where_clause(keyword):
+        if not keyword:
+            return "", []
 
-    # ──────────────────────────────────────────
-    # 1. 페이징 + 필터링 조회
-    # ──────────────────────────────────────────
+        clause = "WHERE word_english LIKE %s OR word_korean LIKE %s OR example_sentence LIKE %s"
+        like = f"%{keyword}%"
+        return clause, [like, like, like]
+
+    @staticmethod
+    def _order_clause(sort):
+        sort_map = {
+            "created_at_desc": "ORDER BY word_no DESC",
+            "created_at_asc": "ORDER BY word_no ASC",
+            "term_asc": "ORDER BY word_english ASC",
+            "term_desc": "ORDER BY word_english DESC",
+        }
+        return sort_map.get(sort, "ORDER BY word_no DESC")
+
     @staticmethod
     def get_words_paginated(user_id, page, per_page, sort, start_date, end_date, keyword) -> dict:
-        query = (
-            db.session.query(Word, UserWordStatus)
-            .outerjoin(
-                UserWordStatus,
-                (Word.id == UserWordStatus.word_id) &
-                (UserWordStatus.user_id == user_id),
-            )
-        )
+        where_clause, params = WordRepository._build_where_clause(keyword)
 
-        if start_date:
-            query = query.filter(
-                (func.date(UserWordStatus.last_studied_at) >= start_date) |
-                (UserWordStatus.id == None)  # 신규 단어 살리기
-            )
-        if end_date:
-            query = query.filter(
-                (func.date(UserWordStatus.last_studied_at) <= end_date) |
-                (UserWordStatus.id == None)  # 신규 단어 살리기
-            )
+        count_query = f"SELECT COUNT(*) AS total FROM RIVO.words {where_clause}"
+        total_row = db.execute_query(count_query, tuple(params))
+        total = total_row[0]["total"] if total_row else 0
 
-        if keyword:
-            like_pattern = f"%{keyword}%"
-            query = query.filter(
-                Word.term.like(like_pattern) | Word.definition.like(like_pattern)
-            )
+        offset = max(page - 1, 0) * per_page
+        select_query = f"""
+            SELECT word_no, word_english, word_korean, example_sentence
+            FROM RIVO.words
+            {where_clause}
+            {WordRepository._order_clause(sort)}
+            LIMIT %s OFFSET %s
+        """
+        rows = db.execute_query(select_query, tuple(params + [per_page, offset]))
 
-        sort_map = {
-            "created_at_desc": desc(Word.created_at),
-            "created_at_asc":  asc(Word.created_at),
-            "term_asc":        asc(Word.term),
-            "term_desc":       desc(Word.term),
-            "latest_studied":  desc(UserWordStatus.last_studied_at),
-        }
-        query = query.order_by(sort_map.get(sort, desc(Word.created_at)))
-
-        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        items = [_to_word_dict(row) for row in rows]
+        pages = ceil(total / per_page) if total else 0
 
         return {
-            "total": pagination.total,
-            "pages": pagination.pages,
-            "items": [
-                WordRepository._to_dict_with_status(word, status)
-                for word, status in pagination.items
-            ],
+            "total": total,
+            "pages": pages,
+            "items": items,
         }
 
     @staticmethod
-    def find_by_id(word_id) -> "Word | None":
-        return db.session.get(Word, word_id)
+    def find_by_id(word_id) -> dict | None:
+        query = "SELECT word_no, word_english, word_korean, example_sentence FROM RIVO.words WHERE word_no = %s"
+        results = db.execute_query(query, (word_id,))
+        return results[0] if results else None
 
     @staticmethod
-    def find_by_term(term) -> "Word | None":
-        return (
-            db.session.query(Word)
-            .filter(Word.term == term)
-            .first()
-        )
+    def find_by_term(term) -> dict | None:
+        query = "SELECT word_no, word_english, word_korean, example_sentence FROM RIVO.words WHERE word_english = %s"
+        results = db.execute_query(query, (term,))
+        return results[0] if results else None
 
-    # ──────────────────────────────────────────
-    # 2. 단어 생성
-    # ──────────────────────────────────────────
     @staticmethod
     def create(term, definition, example=None, memo=None) -> dict:
-        word = Word(
-            term=term,
-            definition=definition,
-            example=example,
-            memo=memo,
-        )
-        db.session.add(word)
-        db.session.commit()
-        return WordRepository._to_dict(word)
+        query = "INSERT INTO RIVO.words (word_english, word_korean, example_sentence) VALUES (%s, %s, %s)"
+        db.execute_update(query, (term, definition, example))
+        return _to_word_dict(WordRepository.find_by_term(term))
 
-    # ──────────────────────────────────────────
-    # 3. 단어 수정
-    # ──────────────────────────────────────────
     @staticmethod
     def update(word_id, term=None, definition=None, example=None, memo=None) -> dict:
-        word = db.session.get(Word, word_id)
-        if term is not None:
-            word.term = term
-        if definition is not None:
-            word.definition = definition
-        if example is not None:
-            word.example = example
-        if memo is not None:
-            word.memo = memo
-        word.updated_at = datetime.utcnow()
-        db.session.commit()
-        return WordRepository._to_dict(word)
+        current = WordRepository.find_by_id(word_id)
+        if not current:
+            return {"message": "단어를 찾을 수 없습니다."}
 
-    # ──────────────────────────────────────────
-    # 4. 단어 삭제
-    # 🔧 수정 2: commit 없음 유지 — Service에서 일괄 커밋
-    # ──────────────────────────────────────────
+        next_term = term if term is not None else current["word_english"]
+        next_definition = definition if definition is not None else current["word_korean"]
+        next_example = example if example is not None else current.get("example_sentence")
+
+        query = """
+            UPDATE RIVO.words
+            SET word_english = %s, word_korean = %s, example_sentence = %s
+            WHERE word_no = %s
+        """
+        db.execute_update(query, (next_term, next_definition, next_example, word_id))
+        return _to_word_dict(WordRepository.find_by_id(word_id))
+
     @staticmethod
     def delete(word_id) -> None:
-        word = db.session.get(Word, word_id)
-        if word:
-            db.session.delete(word)
+        query = "DELETE FROM RIVO.words WHERE word_no = %s"
+        db.execute_update(query, (word_id,))
 
     @staticmethod
     def filter_existing_word_ids(word_ids: list) -> list:
-        rows = (
-            db.session.query(Word.id)
-            .filter(Word.id.in_(word_ids))
-            .all()
-        )
-        return [r.id for r in rows]
+        if not word_ids:
+            return []
+        placeholders = ",".join(["%s"] * len(word_ids))
+        query = f"SELECT word_no FROM RIVO.words WHERE word_no IN ({placeholders})"
+        rows = db.execute_query(query, tuple(word_ids))
+        return [row["word_no"] for row in rows]
 
     @staticmethod
-    def _to_dict(word: "Word") -> dict:
-        return {
-            "id":         word.id,
-            "term":       word.term,
-            "definition": word.definition,
-            "example":    word.example,
-            "memo":       word.memo,
-            "created_at": word.created_at.isoformat() if word.created_at else None,
-            "updated_at": word.updated_at.isoformat() if word.updated_at else None,
-        }
-
-    @staticmethod
-    def _to_dict_with_status(word: "Word", status: "UserWordStatus | None") -> dict:
-        return {
-            "id":              word.id,
-            "term":            word.term,
-            "definition":      word.definition,
-            "example":         word.example,
-            "memo":            word.memo,
-            "created_at":      word.created_at.isoformat() if word.created_at else None,
-            "updated_at":      word.updated_at.isoformat() if word.updated_at else None,
-            "is_memorized":    status.is_memorized  if status else False,
-            "is_bookmarked":   status.is_bookmarked if status else False,
-            "study_count":     status.study_count   if status else 0,
-            "last_studied_at": (
-                status.last_studied_at.isoformat() if status and status.last_studied_at else None
-            ),
-        }
+    def get_random_words(limit: int) -> list:
+        query = """
+            SELECT word_no, word_english, word_korean, example_sentence
+            FROM RIVO.words
+            ORDER BY RAND()
+            LIMIT %s
+        """
+        rows = db.execute_query(query, (limit,))
+        return [_to_word_dict(row) for row in rows]
 
 
 class UserWordStatusRepository:
-
-    # 🔧 수정 1: create_initial_status 삭제 (데드코드)
-
     @staticmethod
-    def find_by_user_and_word(user_id, word_id) -> "UserWordStatus | None":
-        return (
-            db.session.query(UserWordStatus)
-            .filter(
-                UserWordStatus.user_id == user_id,
-                UserWordStatus.word_id == word_id,
-            )
-            .first()
-        )
+    def _get_status(user_id, word_id):
+        query = """
+            SELECT status_id, user_id, word_id, is_favorite, is_memorized, created_at, updated_at
+            FROM RIVO.user_words_status
+            WHERE user_id = %s AND word_id = %s
+        """
+        rows = db.execute_query(query, (user_id, word_id))
+        return rows[0] if rows else None
 
-    # ──────────────────────────────────────────
-    # 5. 미학습 단어 랜덤 조회
-    # ──────────────────────────────────────────
     @staticmethod
     def get_unmemorized_random(user_id, limit) -> list:
-        rows = (
-            db.session.query(Word, UserWordStatus)
-            .outerjoin(
-                UserWordStatus,
-                (Word.id == UserWordStatus.word_id) &
-                (UserWordStatus.user_id == user_id),
-            )
-            .filter(
-                (UserWordStatus.id == None) |           # noqa: E711 신규 유저
-                (UserWordStatus.is_memorized == False)  # noqa: E712 기존 유저 미암기
-            )
-            .order_by(func.rand())  # MySQL
-            .limit(limit)
-            .all()
-        )
-
+        query = """
+            SELECT w.word_no, w.word_english, w.word_korean, w.example_sentence,
+                   COALESCE(s.is_memorized, 0) AS is_memorized,
+                   COALESCE(s.is_favorite, 0) AS is_bookmarked
+            FROM RIVO.words w
+            LEFT JOIN RIVO.user_words_status s
+              ON s.word_id = w.word_no AND s.user_id = %s
+            WHERE s.status_id IS NULL OR s.is_memorized = 0
+            ORDER BY RAND()
+            LIMIT %s
+        """
+        rows = db.execute_query(query, (user_id, limit))
         return [
             {
-                **WordRepository._to_dict(word),
-                "is_memorized":    status.is_memorized   if status else False,
-                "is_bookmarked":   status.is_bookmarked  if status else False,
-                "study_count":     status.study_count    if status else 0,
-                "last_studied_at": (
-                    status.last_studied_at.isoformat() if status and status.last_studied_at else None
-                ),
+                **_to_word_dict(row),
+                "is_memorized": bool(row.get("is_memorized")),
+                "is_bookmarked": bool(row.get("is_bookmarked")),
             }
-            for word, status in rows
+            for row in rows
         ]
 
-    # ──────────────────────────────────────────
-    # 6. 단어 상태 단건 토글 수정 (Upsert)
-    # ──────────────────────────────────────────
     @staticmethod
     def find_or_create_and_update(user_id, word_id, is_memorized=None, is_bookmarked=None) -> dict:
-        status = (
-            db.session.query(UserWordStatus)
-            .filter(
-                UserWordStatus.user_id == user_id,
-                UserWordStatus.word_id == word_id,
-            )
-            .first()
-        )
+        status = UserWordStatusRepository._get_status(user_id, word_id)
 
         if not status:
-            status = UserWordStatus(
-                user_id=user_id,
-                word_id=word_id,
-                is_memorized=False,
-                is_bookmarked=False,
-                study_count=0,
-                last_studied_at=None,
+            insert_query = """
+                INSERT INTO RIVO.user_words_status (user_id, word_id, is_favorite, is_memorized)
+                VALUES (%s, %s, %s, %s)
+            """
+            db.execute_update(
+                insert_query,
+                (
+                    user_id,
+                    word_id,
+                    1 if is_bookmarked else 0,
+                    1 if is_memorized else 0,
+                ),
             )
-            db.session.add(status)
+        else:
+            next_favorite = status["is_favorite"] if is_bookmarked is None else int(bool(is_bookmarked))
+            next_memorized = status["is_memorized"] if is_memorized is None else int(bool(is_memorized))
+            update_query = """
+                UPDATE RIVO.user_words_status
+                SET is_favorite = %s, is_memorized = %s, updated_at = NOW()
+                WHERE user_id = %s AND word_id = %s
+            """
+            db.execute_update(update_query, (next_favorite, next_memorized, user_id, word_id))
 
-        if is_memorized is not None:
-            status.is_memorized = is_memorized
-        if is_bookmarked is not None:
-            status.is_bookmarked = is_bookmarked
-
-        db.session.commit()
-        return UserWordStatusRepository._to_dict(status)
-
-    # ──────────────────────────────────────────
-    # 7. 학습 이력 일괄 갱신
-    # ──────────────────────────────────────────
-    @staticmethod
-    def batch_update_study_records(user_id, word_ids: list, studied_at: datetime) -> int:
-        updated_count = (
-            db.session.query(UserWordStatus)
-            .filter(
-                UserWordStatus.user_id == user_id,
-                UserWordStatus.word_id.in_(word_ids),
-            )
-            .update(
-                {
-                    UserWordStatus.last_studied_at: studied_at,
-                    UserWordStatus.study_count: UserWordStatus.study_count + 1,
-                },
-                synchronize_session=False,
-            )
-        )
-        # commit은 Service에서 처리
-        return updated_count
-
-    # ──────────────────────────────────────────
-    # 7-보조. 배치 처리 전 없는 row 일괄 생성
-    # ──────────────────────────────────────────
-    @staticmethod
-    def find_or_create_bulk(user_id, word_ids: list) -> None:
-        existing_ids = {
-            row.word_id
-            for row in db.session.query(UserWordStatus.word_id).filter(
-                UserWordStatus.user_id == user_id,
-                UserWordStatus.word_id.in_(word_ids),
-            ).all()
+        refreshed = UserWordStatusRepository._get_status(user_id, word_id)
+        return {
+            "word_id": refreshed["word_id"],
+            "is_memorized": bool(refreshed["is_memorized"]),
+            "is_bookmarked": bool(refreshed["is_favorite"]),
         }
 
-        new_statuses = [
-            UserWordStatus(
-                user_id=user_id,
-                word_id=wid,
-                is_memorized=False,
-                is_bookmarked=False,
-                study_count=0,
-                last_studied_at=None,
-            )
-            for wid in word_ids
-            if wid not in existing_ids
-        ]
+    @staticmethod
+    def batch_update_study_records(user_id, word_ids: list) -> int:
+        if not word_ids:
+            return 0
 
-        if new_statuses:
-            db.session.bulk_save_objects(new_statuses)
-            db.session.flush()
+        placeholders = ",".join(["%s"] * len(word_ids))
+        query = f"""
+            UPDATE RIVO.user_words_status
+            SET updated_at = NOW()
+            WHERE user_id = %s AND word_id IN ({placeholders})
+        """
+        return db.execute_update(query, tuple([user_id, *word_ids]))
 
-    # ──────────────────────────────────────────
-    # 관리자 단어 삭제 연동
-    # ──────────────────────────────────────────
     @staticmethod
     def delete_by_word(word_id) -> None:
-        db.session.query(UserWordStatus).filter(
-            UserWordStatus.word_id == word_id,
-        ).delete(synchronize_session=False)
-        # commit은 Service에서 처리
-
-    @staticmethod
-    def _to_dict(status: "UserWordStatus") -> dict:
-        return {
-            "word_id":         status.word_id,
-            "is_memorized":    status.is_memorized,
-            "is_bookmarked":   status.is_bookmarked,
-            "study_count":     status.study_count,
-            "last_studied_at": status.last_studied_at.isoformat() if status.last_studied_at else None,
-        }
+        query = "DELETE FROM RIVO.user_words_status WHERE word_id = %s"
+        db.execute_update(query, (word_id,))

@@ -59,13 +59,28 @@ export default function QuizPage() {
     setState('feedback')
   }
 
-  const handleNextQuestion = () => {
+  const handleNextQuestion = async () => {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(prev => prev + 1)
       setUserAnswer('')
       setIsCorrect(null)
       setState('question')
     } else {
+      if (user?.id) {
+        try {
+          await quizService.submitQuizResult(
+            {
+              totalQuestions: questions.length,
+              correctAnswers: correctCount,
+              answers: [],
+            },
+            Number(user.id)
+          )
+        } catch (error) {
+          console.error('Failed to submit quiz result:', error)
+        }
+      }
+
       // Quiz completed
       updateUser({ todayQuizCompleted: true })
       setState('result')
