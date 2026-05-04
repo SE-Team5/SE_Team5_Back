@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
 import { authService } from '@/services/authService'
+import { dashboardService } from '@/services/dashboardService'
 
 export type UserRole = 'ADMIN' | 'USER'
 
@@ -73,8 +74,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (result.success && result.user) {
       const userData = buildUserFromBackend(result.user)
-      setUser(userData)
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(userData))
+
+      let nextUser = userData
+
+      const userNo = Number(result.user.id)
+      if (Number.isFinite(userNo)) {
+        try {
+          const dashboardResult = await dashboardService.getStatus(userNo)
+          const dashboardData = dashboardResult.data
+
+          if (dashboardResult.status === 'success' && dashboardData) {
+            nextUser = {
+              ...userData,
+              consecutiveDays: dashboardData.attendance_streak ?? userData.consecutiveDays,
+              todayQuizCompleted: dashboardData.today_quiz_completed ?? userData.todayQuizCompleted,
+            }
+          }
+        } catch {
+          // 대시보드 상태는 로그인 성공을 막지 않는다.
+        }
+      }
+
+      setUser(nextUser)
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser))
       if (result.token) {
         sessionStorage.setItem(TOKEN_KEY, result.token)
       }

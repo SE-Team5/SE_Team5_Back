@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { quizService, type QuizQuestion } from '@/services/quizService'
+import { dashboardService } from '@/services/dashboardService'
 import { cn } from '@/lib/utils'
 import { Loader2, CheckCircle2, XCircle, ArrowRight, Trophy, RotateCcw } from 'lucide-react'
 
@@ -76,6 +77,16 @@ export default function QuizPage() {
             },
             Number(user.id)
           )
+
+          const dashboardResult = await dashboardService.getStatus(Number(user.id))
+          if (dashboardResult.status === 'success' && dashboardResult.data) {
+            updateUser({
+              consecutiveDays: dashboardResult.data.attendance_streak,
+              todayQuizCompleted: dashboardResult.data.today_quiz_completed,
+            })
+          } else {
+            updateUser({ todayQuizCompleted: true })
+          }
         } catch (error) {
           console.error('Failed to submit quiz result:', error)
         }

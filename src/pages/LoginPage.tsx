@@ -164,12 +164,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Demo Account Info */}
-        <div className="mt-6 p-4 bg-secondary/50 rounded-xl border border-border">
-          <p className="text-sm text-muted-foreground text-center">
-            테스트 계정: <span className="font-mono text-foreground">admin / admin1234</span>
-          </p>
-        </div>
+        {/* Demo account info removed as requested */}
       </div>
 
       {/* Password Reset Modal */}

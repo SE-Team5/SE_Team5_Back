@@ -1,9 +1,28 @@
 import { Link } from 'react-router-dom'
+import { useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
+import { dashboardService } from '@/services/dashboardService'
 import { Book, Gamepad2, Trophy, Calendar, CheckCircle2, XCircle } from 'lucide-react'
 
 export default function MainPage() {
-  const { user } = useAuth()
+  const { user, updateUser } = useAuth()
+
+  useEffect(() => {
+    if (!user?.id) return
+    const userNo = Number(user.id)
+    if (!userNo) return
+
+    dashboardService.getStatus(userNo).then(res => {
+      if (res.status === 'success' && res.data) {
+        updateUser({
+          consecutiveDays: res.data.attendance_streak,
+          todayQuizCompleted: res.data.today_quiz_completed
+        })
+      }
+    }).catch(err => {
+      console.error('Failed to load dashboard status', err)
+    })
+  }, [user?.id])
 
   return (
     <div className="min-h-screen bg-background">

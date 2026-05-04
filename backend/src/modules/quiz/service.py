@@ -24,7 +24,12 @@ class QuizService:
         if total is None or correct is None:
             return {"status": "error", "message": "퀴즈 결과가 올바르지 않습니다."}
 
+        is_first_completion_today = not self.repository.has_quiz_completed_today(user_no)
         success = self.repository.save_quiz_result(user_no, total, correct)
         if success:
+            if is_first_completion_today:
+                self.repository.increment_attendance_streak(user_no)
+            else:
+                self.repository.ensure_minimum_attendance_streak(user_no)
             return {"status": "success", "message": "결과가 성공적으로 저장되었습니다."}
         return {"status": "error", "message": "저장 중 오류가 발생했습니다."}
