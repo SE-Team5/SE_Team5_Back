@@ -1,8 +1,8 @@
 import os
 from dotenv import load_dotenv
 
-# .env 파일 로드 (backend/.env 기준)
-env_path = os.path.join(os.path.dirname(__file__), '..', '.env')
+# .env 파일 로드 (프로젝트 루트 기준)
+env_path = os.path.join(os.path.dirname(__file__), '..', '..', '.env')
 load_dotenv(env_path)
 
 class Config:
@@ -23,3 +23,4 @@ class Config:
     
     # CORS
     CORS_ORIGINS = '*'
+    

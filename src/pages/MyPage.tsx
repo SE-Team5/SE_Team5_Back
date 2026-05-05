@@ -11,7 +11,8 @@ export default function MyPage() {
 
   const [formData, setFormData] = useState({
     nickname: user?.nickname || user?.username || '',
-    password: '',
+    currentPassword: '',
+    newPassword: '',
     email: user?.email || ''
   })
   const [showPassword, setShowPassword] = useState(false)
@@ -48,10 +49,11 @@ export default function MyPage() {
     setIsSendingCode(true)
     try {
       const result = await authService.sendVerificationCode(formData.email)
-      if (result.success && result.code) {
-        setVerificationCode(result.code)
+      if (result.success) {
         setVerificationSent(true)
-        toast.success('인증코드가 전송되었습니다. (테스트: 123456)')
+        toast.success(result.message || '인증코드가 전송되었습니다.')
+      } else {
+        toast.error(result.message || '인증코드 전송에 실패했습니다.')
       }
     } catch {
       toast.error('인증코드 전송에 실패했습니다.')
@@ -60,12 +62,25 @@ export default function MyPage() {
     }
   }
 
-  const handleVerifyCode = () => {
-    if (enteredCode === verificationCode) {
-      setIsVerified(true)
-      toast.success('이메일 인증이 완료되었습니다.')
-    } else {
-      toast.error('인증코드가 올바르지 않습니다.')
+  const handleVerifyCode = async () => {
+    if (!enteredCode.trim()) {
+      toast.error('인증코드를 입력해주세요.')
+      return
+    }
+
+    setIsSendingCode(true)
+    try {
+      const result = await authService.verifyEmailCode(formData.email, enteredCode)
+      if (result.success) {
+        setIsVerified(true)
+        toast.success(result.message || '이메일 인증이 완료되었습니다.')
+      } else {
+        toast.error(result.message || '인증코드가 올바르지 않습니다.')
+      }
+    } catch {
+      toast.error('인증코드 확인 중 오류가 발생했습니다.')
+    } finally {
+      setIsSendingCode(false)
     }
   }
 
@@ -75,6 +90,24 @@ export default function MyPage() {
       return
     }
 
+    const isChangingPassword = Boolean(formData.currentPassword || formData.newPassword)
+    if (isChangingPassword) {
+      if (!formData.currentPassword.trim() || !formData.newPassword.trim()) {
+        toast.error('현재 비밀번호와 새 비밀번호를 모두 입력해주세요.')
+        return
+      }
+
+      if (formData.newPassword.length < 6) {
+        toast.error('새 비밀번호는 6자 이상이어야 합니다.')
+        return
+      }
+
+      if (!/[A-Za-z]/.test(formData.newPassword) || !/[0-9]/.test(formData.newPassword)) {
+        toast.error('새 비밀번호는 영문과 숫자를 포함해야 합니다.')
+        return
+      }
+    }
+
     if (quizWordCount < 5 || quizWordCount > 30) {
       toast.error('퀴즈 단어 수는 5~30 사이여야 합니다.')
       return
@@ -82,12 +115,33 @@ export default function MyPage() {
 
     setIsSaving(true)
     try {
+      if (isChangingPassword) {
+        const passwordResult = await authService.changePassword({
+          currentPassword: formData.currentPassword,
+          newPassword: formData.newPassword,
+        })
+
+        if (!passwordResult.success) {
+          toast.error(passwordResult.message || '비밀번호 변경에 실패했습니다.')
+          return
+        }
+      }
+
       updateUser({
         nickname: formData.nickname,
         email: formData.email,
         quizWordCount,
         pushNotificationEnabled: pushNotification
       })
+
+      if (isChangingPassword) {
+        setFormData(prev => ({
+          ...prev,
+          currentPassword: '',
+          newPassword: ''
+        }))
+      }
+
       toast.success('설정이 저장되었습니다.')
     } catch {
       toast.error('저장 중 오류가 발생했습니다.')
@@ -96,15 +150,19 @@ export default function MyPage() {
     }
   }
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     navigate('/login')
   }
 
-  const handleDeleteAccount = () => {
-    deleteAccount()
-    toast.success('계정이 삭제되었습니다.')
-    navigate('/login')
+  const handleDeleteAccount = async () => {
+    const res = await deleteAccount()
+    if (res.success) {
+      toast.success(res.message || '계정이 삭제되었습니다.')
+      navigate('/login')
+    } else {
+      toast.error(res.message || '회원 탈퇴에 실패했습니다.')
+    }
   }
 
   return (
@@ -155,7 +213,32 @@ export default function MyPage() {
               />
             </div>
 
-            {/* Password */}
+            {/* Current Password */}
+            <div>
+              <label htmlFor="currentPassword" className="block text-sm font-medium text-foreground mb-2">
+                현재 비밀번호
+              </label>
+              <div className="relative">
+                <input
+                  id="currentPassword"
+                  type={showPassword ? 'text' : 'password'}
+                  maxLength={64}
+                  value={formData.currentPassword}
+                  onChange={(e) => setFormData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                  className="w-full px-4 py-3 pr-12 rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="현재 비밀번호를 입력하세요"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+            </div>
+
+            {/* New Password */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">
                 새 비밀번호
@@ -164,10 +247,11 @@ export default function MyPage() {
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  value={formData.password}
-                  onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                  maxLength={64}
+                  value={formData.newPassword}
+                  onChange={(e) => setFormData(prev => ({ ...prev, newPassword: e.target.value }))}
                   className="w-full px-4 py-3 pr-12 rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="변경할 비밀번호를 입력하세요"
+                  placeholder="새 비밀번호를 입력하세요"
                 />
                 <button
                   type="button"

@@ -28,11 +28,11 @@ export default function NavBar() {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
             <Book className="h-6 w-6 text-primary" />
-            <span className="hidden sm:inline font-bold text-lg text-foreground">TOEIC Word Master</span>
+            <span className="hidden sm:inline font-bold text-lg text-foreground">RIVO</span>
           </Link>
 
           {/* App Name Center (Mobile) */}
-          <span className="sm:hidden font-bold text-lg text-foreground">TOEIC Word Master</span>
+          <span className="sm:hidden font-bold text-lg text-foreground">RIVO</span>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-1">

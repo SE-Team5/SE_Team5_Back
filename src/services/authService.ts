@@ -1,5 +1,25 @@
-// Auth Service - Mock implementation
-// Replace with actual API calls when connecting to Flask backend
+// Auth Service - Flask backend integration
+
+const API_BASE_URL = 'http://localhost:5000/api'
+
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const storedToken = typeof window !== 'undefined' ? sessionStorage.getItem('vocab_quiz_token') : null
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(storedToken ? { Authorization: `Bearer ${storedToken}` } : {}),
+      ...(options?.headers || {})
+    },
+    ...options,
+  })
+
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok && !data) {
+    throw new Error('Request failed')
+  }
+
+  return data as T
+}
 
 export interface LoginRequest {
   username: string
@@ -8,6 +28,7 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   success: boolean
+  token?: string
   user?: {
     id: string
     username: string
@@ -19,6 +40,7 @@ export interface LoginResponse {
 
 export interface RegisterRequest {
   username: string
+  nickname?: string
   password: string
   email: string
   pushNotificationEnabled: boolean
@@ -29,66 +51,88 @@ export interface RegisterResponse {
   message?: string
 }
 
-// Mock API functions - replace with axios calls to Flask backend
+export interface VerifyEmailResponse {
+  success: boolean
+  message?: string
+}
+
+export interface ResetPasswordResponse {
+  success: boolean
+  message?: string
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string
+  newPassword: string
+}
+
+export interface ChangePasswordResponse {
+  success: boolean
+  message?: string
+}
+
 export const authService = {
   async login(data: LoginRequest): Promise<LoginResponse> {
-    // Mock implementation
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    if (data.username === 'admin' && data.password === 'admin1234') {
-      return {
-        success: true,
-        user: {
-          id: 'admin-001',
-          username: 'admin',
-          email: 'admin@example.com',
-          role: 'ADMIN'
-        }
-      }
-    }
-    
-    // For demo purposes, allow any user login
-    return {
-      success: false,
-      message: '아이디 또는 비밀번호가 올바르지 않습니다.'
-    }
+    return request<LoginResponse>('/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        userId: data.username,
+        password: data.password,
+      }),
+    })
   },
 
   async register(data: RegisterRequest): Promise<RegisterResponse> {
-    // Mock implementation
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    return {
-      success: true,
-      message: '회원가입이 완료되었습니다.'
-    }
+    return request<RegisterResponse>('/signup', {
+      method: 'POST',
+      body: JSON.stringify({
+        userId: data.username,
+        nickname: data.nickname || data.username,
+        password: data.password,
+        email: data.email,
+        pushAgree: data.pushNotificationEnabled,
+      }),
+    })
   },
 
-  async sendVerificationCode(email: string): Promise<{ success: boolean; code?: string }> {
-    // Mock implementation - in real app, this would send email
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    // Mock verification code (in real app, this would be sent to email)
-    return {
-      success: true,
-      code: '123456' // For testing purposes
-    }
+  async sendVerificationCode(email: string): Promise<RegisterResponse> {
+    return request<RegisterResponse>('/email/send-code', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    })
   },
 
-  async resetPassword(username: string, email: string): Promise<{ success: boolean; message: string }> {
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    // Mock validation - in real app, verify username and email match
-    if (!username || !email) {
-      return {
-        success: false,
-        message: '아이디와 이메일을 모두 입력해주세요.'
-      }
-    }
-    
-    return {
-      success: true,
-      message: '비밀번호 재설정 링크가 이메일로 전송되었습니다.'
-    }
+  async verifyEmailCode(email: string, code: string): Promise<VerifyEmailResponse> {
+    return request<VerifyEmailResponse>('/email/verify', {
+      method: 'POST',
+      body: JSON.stringify({ email, code }),
+    })
+  },
+
+  async resetPassword(username: string, email: string): Promise<ResetPasswordResponse> {
+    return request<ResetPasswordResponse>('/password/reset', {
+      method: 'POST',
+      body: JSON.stringify({
+        id: username,
+        email,
+      }),
+    })
+  },
+
+  async changePassword(data: ChangePasswordRequest): Promise<ChangePasswordResponse> {
+    return request<ChangePasswordResponse>('/password/change', {
+      method: 'POST',
+      body: JSON.stringify({
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword,
+      }),
+    })
+  }
+  ,
+  async logout(): Promise<{ success: boolean; message?: string }> {
+    return request('/logout', { method: 'POST' })
+  },
+  async deleteAccount(): Promise<{ success: boolean; message?: string }> {
+    return request('/user/delete', { method: 'POST' })
   }
 }

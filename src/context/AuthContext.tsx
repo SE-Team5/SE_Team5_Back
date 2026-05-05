@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import { authService } from '@/services/authService'
+import { dashboardService } from '@/services/dashboardService'
 
 export type UserRole = 'ADMIN' | 'USER'
 
@@ -19,33 +21,39 @@ interface AuthContextType {
   isAuthenticated: boolean
   isAdmin: boolean
   login: (username: string, password: string) => Promise<boolean>
-  logout: () => void
-  register: (username: string, password: string, email: string, pushNotificationEnabled: boolean, nickname?: string) => Promise<boolean>
+  logout: () => Promise<void>
+  register: (username: string, password: string, email: string, pushNotificationEnabled: boolean, nickname?: string) => Promise<{ success: boolean; message?: string }>
   updateUser: (updates: Partial<User>) => void
-  deleteAccount: () => void
+  deleteAccount: () => Promise<{ success: boolean; message?: string }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 const STORAGE_KEY = 'vocab_quiz_user'
+const TOKEN_KEY = 'vocab_quiz_token'
 
-// Mock registered users (In real app, this would be in backend)
-const mockUsers: Map<string, { password: string; user: User }> = new Map([
-  ['admin', {
-    password: 'admin1234',
-    user: {
-      id: 'admin-001',
-      username: 'admin',
-      nickname: '관리자',
-      email: 'admin@example.com',
-      role: 'ADMIN',
-      quizWordCount: 10,
-      consecutiveDays: 0,
-      todayQuizCompleted: false,
-      pushNotificationEnabled: false
-    }
-  }]
-])
+function buildUserFromBackend(data: {
+  id?: number | string
+  username: string
+  nickname?: string
+  email: string
+  role: 'ADMIN' | 'USER' | 'admin' | 'user'
+  pushNotificationEnabled?: boolean
+}): User {
+  const normalizedRole: UserRole = data.role.toLowerCase() === 'admin' ? 'ADMIN' : 'USER'
+
+  return {
+    id: String(data.id ?? data.username),
+    username: data.username,
+    nickname: data.nickname ?? data.username,
+    email: data.email,
+    role: normalizedRole,
+    quizWordCount: 10,
+    consecutiveDays: 0,
+    todayQuizCompleted: false,
+    pushNotificationEnabled: data.pushNotificationEnabled ?? false
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -62,22 +70,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = async (username: string, password: string): Promise<boolean> => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500))
+    const result = await authService.login({ username, password })
 
-    const storedUser = mockUsers.get(username)
-    if (storedUser && storedUser.password === password) {
-      const userData = { ...storedUser.user }
-      setUser(userData)
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(userData))
+    if (result.success && result.user) {
+      const userData = buildUserFromBackend(result.user)
+
+      let nextUser = userData
+
+      const userNo = Number(result.user.id)
+      if (Number.isFinite(userNo)) {
+        try {
+          const dashboardResult = await dashboardService.getStatus(userNo)
+          const dashboardData = dashboardResult.data
+
+          if (dashboardResult.status === 'success' && dashboardData) {
+            nextUser = {
+              ...userData,
+              consecutiveDays: dashboardData.attendance_streak ?? userData.consecutiveDays,
+              todayQuizCompleted: dashboardData.today_quiz_completed ?? userData.todayQuizCompleted,
+            }
+          }
+        } catch {
+          // 대시보드 상태는 로그인 성공을 막지 않는다.
+        }
+      }
+
+      setUser(nextUser)
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser))
+      if (result.token) {
+        sessionStorage.setItem(TOKEN_KEY, result.token)
+      }
       return true
     }
     return false
   }
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await authService.logout()
+    } catch {
+      // ignore network errors, still clear local session
+    }
     setUser(null)
     sessionStorage.removeItem(STORAGE_KEY)
+    sessionStorage.removeItem(TOKEN_KEY)
   }
 
   const register = async (
@@ -86,29 +122,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     pushNotificationEnabled: boolean,
     nickname?: string
-  ): Promise<boolean> => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500))
-
-    // Check if username already exists
-    if (mockUsers.has(username)) {
-      return false
-    }
-
-    const newUser: User = {
-      id: `user-${Date.now()}`,
+  ): Promise<{ success: boolean; message?: string }> => {
+    return authService.register({
       username,
-      nickname: nickname || username,
+      nickname,
+      password,
       email,
-      role: 'USER',
-      quizWordCount: 10,
-      consecutiveDays: 0,
-      todayQuizCompleted: false,
-      pushNotificationEnabled
-    }
-
-    mockUsers.set(username, { password, user: newUser })
-    return true
+      pushNotificationEnabled,
+    })
   }
 
   const updateUser = (updates: Partial<User>) => {
@@ -116,19 +137,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const updatedUser = { ...user, ...updates }
       setUser(updatedUser)
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUser))
-      
-      // Update mock storage too
-      const stored = mockUsers.get(user.username)
-      if (stored) {
-        mockUsers.set(user.username, { ...stored, user: updatedUser })
-      }
     }
   }
 
-  const deleteAccount = () => {
-    if (user) {
-      mockUsers.delete(user.username)
-      logout()
+  const deleteAccount = async (): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const res = await authService.deleteAccount()
+      if (res.success) {
+        // Clear local session without calling logout to avoid extra server call
+        setUser(null)
+        sessionStorage.removeItem(STORAGE_KEY)
+        sessionStorage.removeItem(TOKEN_KEY)
+      }
+      return res
+    } catch (e) {
+      return { success: false, message: '회원 탈퇴 중 오류가 발생했습니다.' }
     }
   }
 

@@ -21,10 +21,10 @@ export default function RegisterPage() {
 
   // Email verification
   const [verificationSent, setVerificationSent] = useState(false)
-  const [verificationCode, setVerificationCode] = useState('')
   const [enteredCode, setEnteredCode] = useState('')
   const [isVerified, setIsVerified] = useState(false)
   const [isSendingCode, setIsSendingCode] = useState(false)
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false)
 
   // Validation errors
   const [errors, setErrors] = useState<{
@@ -46,18 +46,24 @@ export default function RegisterPage() {
       newErrors.username = '아이디를 입력해주세요.'
     } else if (formData.username.length < 3) {
       newErrors.username = '아이디는 3자 이상이어야 합니다.'
+    } else if (formData.username.length > 20) {
+      newErrors.username = '아이디는 20자 이하여야 합니다.'
     }
 
     if (!formData.nickname.trim()) {
       newErrors.nickname = '닉네임을 입력해주세요.'
     } else if (formData.nickname.length < 2) {
       newErrors.nickname = '닉네임은 2자 이상이어야 합니다.'
+    } else if (formData.nickname.length > 50) {
+      newErrors.nickname = '닉네임은 50자 이하여야 합니다.'
     }
 
     if (!formData.password.trim()) {
       newErrors.password = '비밀번호를 입력해주세요.'
     } else if (formData.password.length < 6) {
       newErrors.password = '비밀번호는 6자 이상이어야 합니다.'
+    } else if (formData.password.length > 64) {
+      newErrors.password = '비밀번호는 64자 이하여야 합니다.'
     } else if (!/[A-Za-z]/.test(formData.password) || !/[0-9]/.test(formData.password)) {
       newErrors.password = '비밀번호는 영문과 숫자를 포함해야 합니다.'
     }
@@ -89,10 +95,11 @@ export default function RegisterPage() {
     setIsSendingCode(true)
     try {
       const result = await authService.sendVerificationCode(formData.email)
-      if (result.success && result.code) {
-        setVerificationCode(result.code)
+      if (result.success) {
         setVerificationSent(true)
-        toast.success('인증코드가 전송되었습니다. (테스트: 123456)')
+        toast.success(result.message || '인증코드가 전송되었습니다.')
+      } else {
+        toast.error(result.message || '인증코드 전송에 실패했습니다.')
       }
     } catch {
       toast.error('인증코드 전송에 실패했습니다.')
@@ -101,13 +108,26 @@ export default function RegisterPage() {
     }
   }
 
-  const handleVerifyCode = () => {
-    if (enteredCode === verificationCode) {
-      setIsVerified(true)
-      setErrors(prev => ({ ...prev, code: undefined }))
-      toast.success('이메일 인증이 완료되었습니다.')
-    } else {
-      setErrors(prev => ({ ...prev, code: '인증코드가 올바르지 않습니다.' }))
+  const handleVerifyCode = async () => {
+    if (!enteredCode.trim()) {
+      setErrors(prev => ({ ...prev, code: '인증코드를 입력해주세요.' }))
+      return
+    }
+
+    setIsVerifyingCode(true)
+    try {
+      const result = await authService.verifyEmailCode(formData.email, enteredCode)
+      if (result.success) {
+        setIsVerified(true)
+        setErrors(prev => ({ ...prev, code: undefined }))
+        toast.success(result.message || '이메일 인증이 완료되었습니다.')
+      } else {
+        setErrors(prev => ({ ...prev, code: result.message || '인증코드가 올바르지 않습니다.' }))
+      }
+    } catch {
+      setErrors(prev => ({ ...prev, code: '인증코드 확인 중 오류가 발생했습니다.' }))
+    } finally {
+      setIsVerifyingCode(false)
     }
   }
 
@@ -122,18 +142,18 @@ export default function RegisterPage() {
 
     setIsLoading(true)
     try {
-      const success = await register(
+      const result = await register(
         formData.username,
         formData.password,
         formData.email,
         pushNotification,
         formData.nickname
       )
-      if (success) {
+      if (result.success) {
         toast.success('회원가입이 완료되었습니다.')
         navigate('/login')
       } else {
-        toast.error('이미 사용 중인 아이디입니다.')
+        toast.error(result.message || '회원가입에 실패했습니다.')
       }
     } catch {
       toast.error('회원가입 중 오류가 발생했습니다.')
@@ -165,6 +185,7 @@ export default function RegisterPage() {
               <input
                 id="username"
                 type="text"
+                maxLength={20}
                 value={formData.username}
                 onChange={(e) => {
                   setFormData(prev => ({ ...prev, username: e.target.value }))
@@ -188,6 +209,7 @@ export default function RegisterPage() {
               <input
                 id="nickname"
                 type="text"
+                maxLength={50}
                 value={formData.nickname}
                 onChange={(e) => {
                   setFormData(prev => ({ ...prev, nickname: e.target.value }))
@@ -212,6 +234,7 @@ export default function RegisterPage() {
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
+                  maxLength={64}
                   value={formData.password}
                   onChange={(e) => {
                     setFormData(prev => ({ ...prev, password: e.target.value }))
@@ -300,9 +323,10 @@ export default function RegisterPage() {
                   <button
                     type="button"
                     onClick={handleVerifyCode}
+                    disabled={isVerifyingCode}
                     className="px-4 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
                   >
-                    확인
+                    {isVerifyingCode ? '확인 중...' : '확인'}
                   </button>
                 </div>
                 {errors.code && (

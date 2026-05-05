@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { quizService, type QuizQuestion } from '@/services/quizService'
+import { dashboardService } from '@/services/dashboardService'
 import { cn } from '@/lib/utils'
 import { Loader2, CheckCircle2, XCircle, ArrowRight, Trophy, RotateCcw } from 'lucide-react'
 
@@ -59,13 +60,38 @@ export default function QuizPage() {
     setState('feedback')
   }
 
-  const handleNextQuestion = () => {
+  const handleNextQuestion = async () => {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(prev => prev + 1)
       setUserAnswer('')
       setIsCorrect(null)
       setState('question')
     } else {
+      if (user?.id) {
+        try {
+          await quizService.submitQuizResult(
+            {
+              totalQuestions: questions.length,
+              correctAnswers: correctCount,
+              answers: [],
+            },
+            Number(user.id)
+          )
+
+          const dashboardResult = await dashboardService.getStatus(Number(user.id))
+          if (dashboardResult.status === 'success' && dashboardResult.data) {
+            updateUser({
+              consecutiveDays: dashboardResult.data.attendance_streak,
+              todayQuizCompleted: dashboardResult.data.today_quiz_completed,
+            })
+          } else {
+            updateUser({ todayQuizCompleted: true })
+          }
+        } catch (error) {
+          console.error('Failed to submit quiz result:', error)
+        }
+      }
+
       // Quiz completed
       updateUser({ todayQuizCompleted: true })
       setState('result')
