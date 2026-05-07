@@ -96,12 +96,12 @@ class AuthService:
             return False, "service.py의 SMTP 계정 정보를 먼저 입력해주세요."
 
         message = EmailMessage()
-        message['Subject'] = 'RIVO 이메일 인증 코드'
+        message['Subject'] = 'LIVO 이메일 인증 코드'
         message['From'] = smtp_from
         message['To'] = email
         message.set_content(f'''안녕하세요.
 
-RIVO 이메일 인증 코드입니다.
+LIVO 이메일 인증 코드입니다.
 
 인증 코드: {code}
 
@@ -259,12 +259,12 @@ RIVO 이메일 인증 코드입니다.
             return False, "service.py의 SMTP 계정 정보를 먼저 입력해주세요."
 
         message = EmailMessage()
-        message['Subject'] = 'RIVO 임시 비밀번호 안내'
+        message['Subject'] = 'LIVO 임시 비밀번호 안내'
         message['From'] = smtp_from
         message['To'] = email
         message.set_content(f'''안녕하세요.
 
-RIVO 비밀번호 초기화가 완료되었습니다.
+LIVO 비밀번호 초기화가 완료되었습니다.
 
 임시 비밀번호: {temporary_password}
 

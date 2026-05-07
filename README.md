@@ -18,7 +18,7 @@ pip install -r requirements.txt
 | 항목 | 수정 내용 | 비고 |
 | --- | --- | --- |
 | `DB_PASSWORD` | 본인의 MySQL 비밀번호 | DB 접속 정보 |
-| `DB_NAME` | `RIVO` 유지 | DB 이름 고정 |
+| `DB_NAME` | `LIVO` 유지 | DB 이름 고정 |
 | `SMTP_USER` | 본인 네이버 이메일 | 인증 메일 발송 계정 |
 | `SMTP_PASSWORD` | 본인 네이버 앱 비밀번호 | 계정 비밀번호와 다름 |
 
@@ -41,7 +41,7 @@ npm run dev
 ```
 
 
-DB 관련 프롬프트를 작성할 때는 [database/RIVO_schema.sql](database/RIVO_schema.sql) 을 참고하면 됩니다. 노션에 올려둔 DB 기준으로 만든 `.sql` 파일입니다.
+DB 관련 프롬프트를 작성할 때는 [database/LIVO_schema.sql](database/LIVO_schema.sql) 을 참고하면 됩니다. 노션에 올려둔 DB 기준으로 만든 `.sql` 파일입니다.
 
 ## CSV 업로드 인코딩
 

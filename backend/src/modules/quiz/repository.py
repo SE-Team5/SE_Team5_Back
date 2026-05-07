@@ -7,7 +7,7 @@ class QuizRepository:
         """랜덤하게 단어를 가져와 퀴즈 생성"""
         query = """
             SELECT word_no, word_english, word_korean, example_sentence
-            FROM RIVO.words
+            FROM LIVO.words
             ORDER BY RAND()
             LIMIT %s
         """
@@ -25,7 +25,7 @@ class QuizRepository:
     def save_quiz_result(self, user_no, total, correct):
         """퀴즈 결과를 DB에 저장"""
         query = """
-        INSERT INTO RIVO.game_records (user_id, total_words, correct_answers, played_at)
+        INSERT INTO LIVO.game_records (user_id, total_words, correct_answers, played_at)
         VALUES (%s, %s, %s, NOW())
         """
         return db.execute_update(query, (user_no, total, correct))
@@ -34,7 +34,7 @@ class QuizRepository:
         """오늘 이미 퀴즈를 제출했는지 확인"""
         query = """
         SELECT COUNT(*) AS cnt
-        FROM RIVO.game_records
+        FROM LIVO.game_records
         WHERE user_id = %s
           AND DATE(played_at) = CURDATE()
         """
@@ -44,7 +44,7 @@ class QuizRepository:
     def increment_attendance_streak(self, user_no):
         """오늘 첫 퀴즈 완료 시 연속 출석을 1 증가"""
         query = """
-        UPDATE RIVO.users
+        UPDATE LIVO.users
         SET attendance_streak = COALESCE(attendance_streak, 0) + 1,
             attendance_today = TRUE
         WHERE user_no = %s
@@ -54,7 +54,7 @@ class QuizRepository:
     def ensure_minimum_attendance_streak(self, user_no):
         """오늘 퀴즈가 완료된 상태라면 최소 출석값을 1로 맞춤"""
         query = """
-        UPDATE RIVO.users
+        UPDATE LIVO.users
         SET attendance_streak = CASE
                 WHEN COALESCE(attendance_streak, 0) < 1 THEN 1
                 ELSE attendance_streak

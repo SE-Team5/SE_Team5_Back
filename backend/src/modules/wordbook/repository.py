@@ -16,7 +16,7 @@ def _to_word_dict(row):
 class UserRepository:
     @staticmethod
     def find_by_id(user_id) -> dict | None:
-        query = "SELECT user_no, email, daily_target_count FROM RIVO.users WHERE user_no = %s"
+        query = "SELECT user_no, email, daily_target_count FROM LIVO.users WHERE user_no = %s"
         results = db.execute_query(query, (user_id,))
         if not results:
             return None
@@ -52,14 +52,14 @@ class WordRepository:
     def get_words_paginated(user_id, page, per_page, sort, start_date, end_date, keyword) -> dict:
         where_clause, params = WordRepository._build_where_clause(keyword)
 
-        count_query = f"SELECT COUNT(*) AS total FROM RIVO.words {where_clause}"
+        count_query = f"SELECT COUNT(*) AS total FROM LIVO.words {where_clause}"
         total_row = db.execute_query(count_query, tuple(params))
         total = total_row[0]["total"] if total_row else 0
 
         offset = max(page - 1, 0) * per_page
         select_query = f"""
             SELECT word_no, word_english, word_korean, example_sentence
-            FROM RIVO.words
+            FROM LIVO.words
             {where_clause}
             {WordRepository._order_clause(sort)}
             LIMIT %s OFFSET %s
@@ -77,19 +77,19 @@ class WordRepository:
 
     @staticmethod
     def find_by_id(word_id) -> dict | None:
-        query = "SELECT word_no, word_english, word_korean, example_sentence FROM RIVO.words WHERE word_no = %s"
+        query = "SELECT word_no, word_english, word_korean, example_sentence FROM LIVO.words WHERE word_no = %s"
         results = db.execute_query(query, (word_id,))
         return results[0] if results else None
 
     @staticmethod
     def find_by_term(term) -> dict | None:
-        query = "SELECT word_no, word_english, word_korean, example_sentence FROM RIVO.words WHERE word_english = %s"
+        query = "SELECT word_no, word_english, word_korean, example_sentence FROM LIVO.words WHERE word_english = %s"
         results = db.execute_query(query, (term,))
         return results[0] if results else None
 
     @staticmethod
     def create(term, definition, example=None, memo=None) -> dict:
-        query = "INSERT INTO RIVO.words (word_english, word_korean, example_sentence) VALUES (%s, %s, %s)"
+        query = "INSERT INTO LIVO.words (word_english, word_korean, example_sentence) VALUES (%s, %s, %s)"
         db.execute_update(query, (term, definition, example))
         return _to_word_dict(WordRepository.find_by_term(term))
 
@@ -104,7 +104,7 @@ class WordRepository:
         next_example = example if example is not None else current.get("example_sentence")
 
         query = """
-            UPDATE RIVO.words
+            UPDATE LIVO.words
             SET word_english = %s, word_korean = %s, example_sentence = %s
             WHERE word_no = %s
         """
@@ -113,7 +113,7 @@ class WordRepository:
 
     @staticmethod
     def delete(word_id) -> None:
-        query = "DELETE FROM RIVO.words WHERE word_no = %s"
+        query = "DELETE FROM LIVO.words WHERE word_no = %s"
         db.execute_update(query, (word_id,))
 
     @staticmethod
@@ -121,7 +121,7 @@ class WordRepository:
         if not word_ids:
             return []
         placeholders = ",".join(["%s"] * len(word_ids))
-        query = f"SELECT word_no FROM RIVO.words WHERE word_no IN ({placeholders})"
+        query = f"SELECT word_no FROM LIVO.words WHERE word_no IN ({placeholders})"
         rows = db.execute_query(query, tuple(word_ids))
         return [row["word_no"] for row in rows]
 
@@ -129,7 +129,7 @@ class WordRepository:
     def get_random_words(limit: int) -> list:
         query = """
             SELECT word_no, word_english, word_korean, example_sentence
-            FROM RIVO.words
+            FROM LIVO.words
             ORDER BY RAND()
             LIMIT %s
         """
@@ -142,7 +142,7 @@ class UserWordStatusRepository:
     def _get_status(user_id, word_id):
         query = """
             SELECT status_id, user_id, word_id, is_favorite, is_memorized, created_at, updated_at
-            FROM RIVO.user_words_status
+            FROM LIVO.user_words_status
             WHERE user_id = %s AND word_id = %s
         """
         rows = db.execute_query(query, (user_id, word_id))
@@ -154,8 +154,8 @@ class UserWordStatusRepository:
             SELECT w.word_no, w.word_english, w.word_korean, w.example_sentence,
                    COALESCE(s.is_memorized, 0) AS is_memorized,
                    COALESCE(s.is_favorite, 0) AS is_bookmarked
-            FROM RIVO.words w
-            LEFT JOIN RIVO.user_words_status s
+            FROM LIVO.words w
+            LEFT JOIN LIVO.user_words_status s
               ON s.word_id = w.word_no AND s.user_id = %s
             WHERE s.status_id IS NULL OR s.is_memorized = 0
             ORDER BY RAND()
@@ -177,7 +177,7 @@ class UserWordStatusRepository:
 
         if not status:
             insert_query = """
-                INSERT INTO RIVO.user_words_status (user_id, word_id, is_favorite, is_memorized)
+                INSERT INTO LIVO.user_words_status (user_id, word_id, is_favorite, is_memorized)
                 VALUES (%s, %s, %s, %s)
             """
             db.execute_update(
@@ -193,7 +193,7 @@ class UserWordStatusRepository:
             next_favorite = status["is_favorite"] if is_bookmarked is None else int(bool(is_bookmarked))
             next_memorized = status["is_memorized"] if is_memorized is None else int(bool(is_memorized))
             update_query = """
-                UPDATE RIVO.user_words_status
+                UPDATE LIVO.user_words_status
                 SET is_favorite = %s, is_memorized = %s, updated_at = NOW()
                 WHERE user_id = %s AND word_id = %s
             """
@@ -213,7 +213,7 @@ class UserWordStatusRepository:
 
         placeholders = ",".join(["%s"] * len(word_ids))
         query = f"""
-            UPDATE RIVO.user_words_status
+            UPDATE LIVO.user_words_status
             SET updated_at = NOW()
             WHERE user_id = %s AND word_id IN ({placeholders})
         """
@@ -221,5 +221,5 @@ class UserWordStatusRepository:
 
     @staticmethod
     def delete_by_word(word_id) -> None:
-        query = "DELETE FROM RIVO.user_words_status WHERE word_id = %s"
+        query = "DELETE FROM LIVO.user_words_status WHERE word_id = %s"
         db.execute_update(query, (word_id,))
