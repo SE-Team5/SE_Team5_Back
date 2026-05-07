@@ -42,3 +42,7 @@ npm run dev
 
 
 DB 관련 프롬프트를 작성할 때는 [database/RIVO_schema.sql](database/RIVO_schema.sql) 을 참고하면 됩니다. 노션에 올려둔 DB 기준으로 만든 `.sql` 파일입니다.
+
+## CSV 업로드 인코딩
+
+관리자 페이지에서 업로드하는 CSV 파일은 UTF-8 인코딩을 사용해야 합니다. 특히 Windows의 일부 프로그램에서 생성되는 BOM(Byte Order Mark)이 포함된 파일도 지원하지만, 기본적으로 UTF-8 형식으로 저장해 주세요.
