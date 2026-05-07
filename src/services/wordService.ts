@@ -60,7 +60,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return data as T
 }
 
-function parseCsvLine(line: string): string[] {
+function parseCsvLine(line: string, delimiter = ','): string[] {
   const values: string[] = []
   let current = ''
   let inQuotes = false
@@ -78,7 +78,7 @@ function parseCsvLine(line: string): string[] {
       continue
     }
 
-    if (char === ',' && !inQuotes) {
+    if (char === delimiter && !inQuotes) {
       values.push(current.trim())
       current = ''
       continue
@@ -92,18 +92,33 @@ function parseCsvLine(line: string): string[] {
 }
 
 function parseCsvWords(csvText: string): Array<Omit<Word, 'id'>> {
-  const lines = csvText
-    .split(/\r?\n/)
-    .map(line => line.trim())
-    .filter(Boolean)
+  // Remove UTF-8 BOM if present
+  if (csvText.charCodeAt(0) === 0xfeff) {
+    csvText = csvText.slice(1)
+  }
+
+  const rawLines = csvText.split(/\r?\n/)
+  // Keep empty lines for better column alignment, but filter later
+  const lines = rawLines.map(line => line.replace(/\u0000/g, '')).filter(line => line !== undefined && line !== null)
+  // Trim only trailing/leading whitespace when mapping values, not removing internal spacing here
+  const nonEmptyLines = lines.map(l => l).filter(line => line.trim().length > 0)
 
   if (lines.length === 0) {
     return []
   }
+  // Detect delimiter from the first non-empty line
+  const sampleLine = nonEmptyLines.length > 0 ? nonEmptyLines[0] : lines[0]
+  let delimiter = ','
+  if (sampleLine.indexOf(',') >= 0) {
+    delimiter = ','
+  } else if (sampleLine.indexOf(';') >= 0) {
+    delimiter = ';'
+  } else if (sampleLine.indexOf('\t') >= 0) {
+    delimiter = '\t'
+  }
 
-  const firstRow = parseCsvLine(lines[0]).map(value => value.toLowerCase())
+  const firstRow = parseCsvLine(sampleLine, delimiter).map(value => value.toLowerCase())
   const hasHeader = firstRow.some(value => ['english', 'korean', 'example', 'term', 'definition'].includes(value))
-
   const headerIndex = hasHeader
     ? {
         english: firstRow.findIndex(value => ['english', 'term', 'word', 'word_english'].includes(value)),
@@ -112,16 +127,16 @@ function parseCsvWords(csvText: string): Array<Omit<Word, 'id'>> {
       }
     : { english: 0, korean: 1, example: 2 }
 
-  const dataLines = hasHeader ? lines.slice(1) : lines
+  const dataLines = hasHeader ? nonEmptyLines.slice(1) : nonEmptyLines
 
   return dataLines
-    .map(line => parseCsvLine(line))
+    .map(line => parseCsvLine(line, delimiter))
     .map(columns => ({
       english: columns[headerIndex.english] ?? '',
       korean: columns[headerIndex.korean] ?? '',
       example: columns[headerIndex.example] ?? '',
     }))
-    .filter(word => word.english.trim() && word.korean.trim())
+    .filter(word => word.english && word.korean)
     .map(word => ({
       english: word.english.trim(),
       korean: word.korean.trim(),
@@ -180,12 +195,18 @@ export const wordService = {
     const parsedWords = parseCsvWords(csvText)
 
     let successCount = 0
+    const failures: Array<{ word: Omit<Word, 'id'>; error: string }> = []
+
     for (const word of parsedWords) {
-      await this.addWord(word)
-      successCount += 1
+      try {
+        await this.addWord(word)
+        successCount += 1
+      } catch (e: any) {
+        failures.push({ word, error: e?.message || String(e) })
+      }
     }
 
-    return { success: true, count: successCount }
+    return { success: failures.length === 0, count: successCount, failures }
   },
 
   async getRandomWords(count: number): Promise<Word[]> {

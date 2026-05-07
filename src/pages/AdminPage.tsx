@@ -116,10 +116,17 @@ export default function AdminPage() {
 
     setIsUploading(true)
     try {
-      const result = await wordService.uploadCSV(file)
+      const result: any = await wordService.uploadCSV(file)
       if (result.success) {
         toast.success(`${result.count}개 단어가 추가되었습니다.`)
         loadWords()
+      } else if (result.count > 0) {
+        toast.success(`${result.count}개 단어가 추가되었습니다. 일부 항목은 실패했습니다.`)
+        console.warn('CSV upload partial failures:', result.failures)
+        loadWords()
+      } else {
+        toast.error('CSV 업로드에 실패했습니다. 상세 정보는 콘솔을 확인하세요.')
+        console.error('CSV upload failures:', result.failures)
       }
     } catch (error) {
       console.error('Failed to upload CSV:', error)
