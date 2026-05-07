@@ -26,7 +26,7 @@ class QuizRepository:
         """퀴즈 결과를 DB에 저장"""
         query = """
         INSERT INTO LIVO.game_records (user_id, total_words, correct_answers, played_at)
-        VALUES (%s, %s, %s, NOW())
+        VALUES (%s, %s, %s, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+09:00'))
         """
         return db.execute_update(query, (user_no, total, correct))
 
@@ -36,7 +36,7 @@ class QuizRepository:
         SELECT COUNT(*) AS cnt
         FROM LIVO.game_records
         WHERE user_id = %s
-          AND DATE(played_at) = CURDATE()
+                    AND DATE(played_at) = DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+09:00'))
         """
         rows = db.execute_query(query, (user_no,))
         return bool(rows and rows[0].get('cnt', 0) > 0)

@@ -15,7 +15,7 @@ class DashboardService:
             attendance_streak = user.get('attendance_streak', 0)
             today_completed = self.repo.check_today_quiz_completed(user_no)
 
-            if today_completed and attendance_streak < 1:
+            if attendance_streak < 1:
                 attendance_streak = 1
 
             return {

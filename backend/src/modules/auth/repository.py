@@ -20,8 +20,8 @@ class AuthRepository:
     def create_user(self, user_id, nickname, password_hash, email):
         """사용자 생성"""
         query = """
-        INSERT INTO LIVO.users (user_id, user_nickname, password_hash, email, role, daily_target_count)
-        VALUES (%s, %s, %s, %s, 'USER', 20)
+        INSERT INTO LIVO.users (user_id, user_nickname, password_hash, email, role, attendance_streak, attendance_today, daily_target_count)
+        VALUES (%s, %s, %s, %s, 'USER', 1, FALSE, 20)
         """
         try:
             db.execute_update(query, (user_id, nickname, password_hash, email))

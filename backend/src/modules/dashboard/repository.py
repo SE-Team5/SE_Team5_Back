@@ -12,7 +12,7 @@ class DashboardRepository:
 
     def check_today_quiz_completed(self, user_no: int) -> bool:
         # Check in game_records whether a record exists for the user with played_at date = today
-        query = "SELECT COUNT(*) AS cnt FROM LIVO.game_records WHERE user_id = %s AND DATE(played_at) = CURDATE()"
+        query = "SELECT COUNT(*) AS cnt FROM LIVO.game_records WHERE user_id = %s AND DATE(played_at) = DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+09:00'))"
         results = db.execute_query(query, (user_no,))
         if not results:
             return False
