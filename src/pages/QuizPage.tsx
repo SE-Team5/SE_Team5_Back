@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
-import { quizService, type QuizQuestion } from '@/services/quizService'
+import { quizService, type QuizQuestion, type DateFilter } from '@/services/quizService'
 import { dashboardService } from '@/services/dashboardService'
 import { cn } from '@/lib/utils'
 import { Loader2, CheckCircle2, XCircle, ArrowRight, Trophy, RotateCcw } from 'lucide-react'
@@ -11,8 +11,10 @@ type QuizState = 'loading' | 'question' | 'feedback' | 'result'
 export default function QuizPage() {
   const { user, updateUser } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const state = location.state as { wordCount?: number; dateFilter?: DateFilter } | null
 
-  const [state, setState] = useState<QuizState>('loading')
+  const [quizState, setQuizState] = useState<QuizState>('loading')
   const [questions, setQuestions] = useState<QuizQuestion[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [userAnswer, setUserAnswer] = useState('')
@@ -27,12 +29,13 @@ export default function QuizPage() {
   }, [])
 
   const loadQuiz = async () => {
-    setState('loading')
+    setQuizState('loading')
     try {
-      const wordCount = user?.quizWordCount || 10
-      const quizQuestions = await quizService.generateQuiz(wordCount)
+      const wordCount = state?.wordCount || user?.quizWordCount || 10
+      const dateFilter = state?.dateFilter || 'all'
+      const quizQuestions = await quizService.generateQuiz(wordCount, user?.userNo, dateFilter)
       setQuestions(quizQuestions)
-      setState('question')
+      setQuizState('question')
     } catch (error) {
       console.error('Failed to load quiz:', error)
     }
@@ -46,7 +49,7 @@ export default function QuizPage() {
     if (correct) {
       setCorrectCount(prev => prev + 1)
     }
-    setState('feedback')
+    setQuizState('feedback')
   }
 
   const handleSelectOption = (option: string) => {
@@ -57,7 +60,7 @@ export default function QuizPage() {
     if (correct) {
       setCorrectCount(prev => prev + 1)
     }
-    setState('feedback')
+    setQuizState('feedback')
   }
 
   const handleNextQuestion = async () => {
@@ -65,7 +68,7 @@ export default function QuizPage() {
       setCurrentIndex(prev => prev + 1)
       setUserAnswer('')
       setIsCorrect(null)
-      setState('question')
+      setQuizState('question')
     } else {
       if (user?.id) {
         try {
@@ -94,7 +97,7 @@ export default function QuizPage() {
 
       // Quiz completed
       updateUser({ todayQuizCompleted: true })
-      setState('result')
+      setQuizState('result')
     }
   }
 
@@ -131,7 +134,7 @@ export default function QuizPage() {
   const isChoiceType = currentQuestion?.type.endsWith('choice')
 
   // Loading State
-  if (state === 'loading') {
+  if (quizState === 'loading') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -143,7 +146,7 @@ export default function QuizPage() {
   }
 
   // Result State
-  if (state === 'result') {
+  if (quizState === 'result') {
     const percentage = Math.round((correctCount / questions.length) * 100)
     
     return (
@@ -214,7 +217,7 @@ export default function QuizPage() {
         </div>
 
         {/* Answer Section */}
-        {state === 'question' && (
+        {quizState === 'question' && (
           <>
             {isChoiceType ? (
               // Multiple Choice
@@ -255,7 +258,7 @@ export default function QuizPage() {
         )}
 
         {/* Feedback Section */}
-        {state === 'feedback' && (
+        {quizState === 'feedback' && (
           <div className="space-y-4">
             <div
               className={cn(

@@ -135,3 +135,30 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Toast Notification Styles */
+@layer components {
+  /* Sonner Toaster container - allows interaction below */
+  [data-sonner-toaster] {
+    @apply pointer-events-none;
+    z-index: 50;
+  }
+
+  /* Individual toast elements - allow interaction */
+  [data-sonner-toast] {
+    @apply pointer-events-auto;
+    z-index: 51;
+  }
+
+  /* Toast action buttons */
+  [data-sonner-toast] button {
+    @apply pointer-events-auto;
+  }
+
+  /* Ensure toast doesn't block modal interactions */
+  [role="alertdialog"],
+  [role="dialog"] {
+    z-index: 52;
+  }
+}
+

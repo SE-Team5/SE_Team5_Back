@@ -6,6 +6,8 @@ export type QuizType =
   | 'english-to-korean-choice'
   | 'english-to-korean-text'
 
+export type DateFilter = 'today' | 'week' | 'all'
+
 export interface QuizQuestion {
   id: string
   type: QuizType
@@ -23,6 +25,21 @@ export interface QuizResult {
     isCorrect: boolean
     correctAnswer: string
   }[]
+}
+
+export interface GameRecord {
+  id: number
+  totalWords: number
+  correctAnswers: number
+  accuracyRate: number
+  playedAt: string
+}
+
+export interface GameStatistics {
+  totalGames: number
+  totalWordsPlayed: number
+  totalCorrect: number
+  avgAccuracy: number
 }
 
 const API_BASE_URL = 'http://localhost:5000/api/quiz'
@@ -107,8 +124,15 @@ function extractWords(response: QuizStartResponse): Word[] {
 }
 
 export const quizService = {
-  async generateQuiz(wordCount: number): Promise<QuizQuestion[]> {
-    const response = await request<QuizStartResponse>(`/start?limit=${wordCount}`)
+  async generateQuiz(wordCount: number, userNo?: number, dateFilter: DateFilter = 'all'): Promise<QuizQuestion[]> {
+    const params = new URLSearchParams()
+    params.append('limit', String(wordCount))
+    params.append('filter', dateFilter)
+    if (userNo) {
+      params.append('userNo', String(userNo))
+    }
+    
+    const response = await request<QuizStartResponse>(`/start?${params.toString()}`)
     const words = extractWords(response)
     const allWords = words
 
@@ -151,5 +175,21 @@ export const quizService = {
     })
 
     return { success: response.success ?? response.status === 'success' }
+  },
+
+  async getGameHistory(userNo: number, limit: number = 20): Promise<GameRecord[]> {
+    const response = await request<{ status?: string; data?: GameRecord[] }>(`/history?userNo=${userNo}&limit=${limit}`)
+    return response.data ?? []
+  },
+
+  async getGameStatistics(userNo: number): Promise<GameStatistics> {
+    const response = await request<{ status?: string; data?: GameStatistics }>(`/statistics?userNo=${userNo}`)
+    return response.data ?? {
+      totalGames: 0,
+      totalWordsPlayed: 0,
+      totalCorrect: 0,
+      avgAccuracy: 0
+    }
   }
 }
+

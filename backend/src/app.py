@@ -2,10 +2,12 @@
 import os
 import sys
 import importlib
+import atexit
 from flask import Flask
 from flask_cors import CORS
 from config import Config
 from db import db
+from scheduler import TaskScheduler
 
 def create_app():
     """Flask 앱 생성 및 초기화"""
@@ -26,6 +28,13 @@ def create_app():
     
     # 블루프린트 자동 탐지 및 등록
     register_blueprints(app)
+    
+    # 스케줄러 초기화
+    TaskScheduler.init()
+    TaskScheduler.add_inactivity_check_job()
+    
+    # 종료 시 스케줄러 정지
+    atexit.register(TaskScheduler.shutdown)
     
     return app
 
@@ -58,3 +67,4 @@ def register_blueprints(app):
 if __name__ == '__main__':
     app = create_app()
     app.run(host='0.0.0.0', port=Config.PORT, debug=Config.DEBUG)
+

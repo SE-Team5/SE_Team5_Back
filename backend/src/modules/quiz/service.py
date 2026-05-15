@@ -5,9 +5,17 @@ class QuizService:
     def __init__(self):
         self.repository = QuizRepository()
 
-    def get_new_quiz(self, limit=10):
-        """사용자에게 제공할 퀴즈 세트 구성"""
-        words = self.repository.get_random_words(limit=limit)
+    def get_new_quiz(self, user_no=None, limit=10, date_filter='all'):
+        """
+        사용자에게 제공할 퀴즈 세트 구성
+        date_filter: 'today', 'week', 'all'
+        """
+        # 사용자가 있고 date_filter가 all이 아니면 필터링된 단어 가져오기
+        if user_no and date_filter != 'all':
+            words = self.repository.get_words_by_date_range(user_no, date_filter, limit)
+        else:
+            words = self.repository.get_random_words(limit=limit)
+        
         if not words:
             return {"status": "error", "message": "단어장에 단어가 부족합니다."}
         
@@ -28,3 +36,25 @@ class QuizService:
         if success:
             return {"status": "success", "message": "결과가 성공적으로 저장되었습니다."}
         return {"status": "error", "message": "저장 중 오류가 발생했습니다."}
+
+    def get_game_history(self, user_no, limit=20):
+        """사용자의 게임 이력 조회"""
+        if not user_no:
+            return {"status": "error", "message": "사용자 정보가 필요합니다."}
+        
+        history = self.repository.get_game_history(user_no, limit)
+        return {
+            "status": "success",
+            "data": history
+        }
+
+    def get_game_statistics(self, user_no):
+        """사용자의 게임 통계 조회"""
+        if not user_no:
+            return {"status": "error", "message": "사용자 정보가 필요합니다."}
+        
+        statistics = self.repository.get_game_statistics(user_no)
+        return {
+            "status": "success",
+            "data": statistics
+        }

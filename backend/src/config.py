@@ -24,3 +24,15 @@ class Config:
     # CORS
     CORS_ORIGINS = '*'
     
+    # Email Configuration
+    MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
+    MAIL_PORT = int(os.getenv('MAIL_PORT', 587))
+    MAIL_USE_TLS = os.getenv('MAIL_USE_TLS', 'True') == 'True'
+    MAIL_USERNAME = os.getenv('MAIL_USERNAME', '')
+    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD', '')
+    MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', 'noreply@livo.com')
+    
+    # Scheduler
+    SCHEDULER_ENABLED = os.getenv('SCHEDULER_ENABLED', 'True') == 'True'
+    INACTIVITY_HOURS = int(os.getenv('INACTIVITY_HOURS', 2000))  # 2000시간
+    
