@@ -63,3 +63,102 @@ class QuizRepository:
         WHERE user_no = %s
         """
         return db.execute_update(query, (user_no,))
+
+    def get_words_by_date_range(self, user_no, date_filter='all', limit=10):
+        """
+        날짜 필터에 따라 단어 가져오기
+        date_filter: 'today', 'week', 'all'
+        """
+        if date_filter == 'today':
+            query = """
+                SELECT w.word_no, w.word_english, w.word_korean, w.example_sentence
+                FROM LIVO.words w
+                INNER JOIN LIVO.user_words_status uws ON w.word_no = uws.word_id
+                WHERE uws.user_id = %s
+                  AND DATE(uws.created_at) = CURDATE()
+                ORDER BY RAND()
+                LIMIT %s
+            """
+        elif date_filter == 'week':
+            query = """
+                SELECT w.word_no, w.word_english, w.word_korean, w.example_sentence
+                FROM LIVO.words w
+                INNER JOIN LIVO.user_words_status uws ON w.word_no = uws.word_id
+                WHERE uws.user_id = %s
+                  AND uws.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+                ORDER BY RAND()
+                LIMIT %s
+            """
+        else:  # 'all'
+            query = """
+                SELECT w.word_no, w.word_english, w.word_korean, w.example_sentence
+                FROM LIVO.words w
+                INNER JOIN LIVO.user_words_status uws ON w.word_no = uws.word_id
+                WHERE uws.user_id = %s
+                ORDER BY RAND()
+                LIMIT %s
+            """
+        
+        rows = db.execute_query(query, (user_no, limit))
+        return [
+            {
+                "id": row["word_no"],
+                "english": row["word_english"],
+                "korean": row["word_korean"],
+                "example": row.get("example_sentence"),
+            }
+            for row in rows
+        ]
+
+    def get_game_history(self, user_no, limit=20):
+        """사용자의 게임 이력 조회"""
+        query = """
+            SELECT 
+                record_id,
+                total_words,
+                correct_answers,
+                ROUND((correct_answers / total_words * 100), 1) as accuracy_rate,
+                played_at
+            FROM LIVO.game_records
+            WHERE user_id = %s
+            ORDER BY played_at DESC
+            LIMIT %s
+        """
+        rows = db.execute_query(query, (user_no, limit))
+        return [
+            {
+                "id": row["record_id"],
+                "totalWords": row["total_words"],
+                "correctAnswers": row["correct_answers"],
+                "accuracyRate": row["accuracy_rate"],
+                "playedAt": row["played_at"].isoformat() if hasattr(row["played_at"], 'isoformat') else str(row["played_at"]),
+            }
+            for row in rows
+        ]
+
+    def get_game_statistics(self, user_no):
+        """사용자의 게임 통계 조회"""
+        query = """
+            SELECT 
+                COUNT(*) as total_games,
+                SUM(total_words) as total_words_played,
+                SUM(correct_answers) as total_correct,
+                ROUND(AVG((correct_answers / total_words * 100)), 1) as avg_accuracy
+            FROM LIVO.game_records
+            WHERE user_id = %s
+        """
+        rows = db.execute_query(query, (user_no,))
+        if rows and rows[0]:
+            row = rows[0]
+            return {
+                "totalGames": row["total_games"] or 0,
+                "totalWordsPlayed": row["total_words_played"] or 0,
+                "totalCorrect": row["total_correct"] or 0,
+                "avgAccuracy": row["avg_accuracy"] or 0.0,
+            }
+        return {
+            "totalGames": 0,
+            "totalWordsPlayed": 0,
+            "totalCorrect": 0,
+            "avgAccuracy": 0.0,
+        }

@@ -53,7 +53,14 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <>
-      <Toaster position="top-center" richColors />
+      <Toaster 
+        position="bottom-right" 
+        richColors 
+        expand
+        visibleToasts={3}
+        closeButton
+        theme="light"
+      />
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />

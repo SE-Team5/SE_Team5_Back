@@ -3,3 +3,5 @@ Flask-CORS==4.0.0
 mysql-connector-python==8.1.0
 python-dotenv==1.0.0
 Werkzeug==2.3.7
+APScheduler==3.10.4
+Flask-Mail==0.9.1
