@@ -9,6 +9,7 @@ USE LIVO;
 
 SET FOREIGN_KEY_CHECKS = 0;
 
+DROP TABLE IF EXISTS word_relations;
 DROP TABLE IF EXISTS user_words_status;
 DROP TABLE IF EXISTS game_records;
 DROP TABLE IF EXISTS words;
@@ -41,6 +42,23 @@ CREATE TABLE words (
   example_sentence TEXT,
   PRIMARY KEY (word_no),
   UNIQUE KEY unique_word_english (word_english)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- word_relations table
+CREATE TABLE word_relations (
+  relation_id INT NOT NULL AUTO_INCREMENT,
+  word_no INT NOT NULL,
+  related_word_no INT NOT NULL,
+  relation_type ENUM('synonym','antonym','homonym') NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (relation_id),
+  UNIQUE KEY unique_word_relation (word_no, related_word_no, relation_type),
+  KEY idx_word_no (word_no),
+  KEY idx_related_word_no (related_word_no),
+  CONSTRAINT fk_word_relations_word FOREIGN KEY (word_no) REFERENCES words(word_no) ON DELETE CASCADE,
+  CONSTRAINT fk_word_relations_related_word FOREIGN KEY (related_word_no) REFERENCES words(word_no) ON DELETE CASCADE,
+  CONSTRAINT chk_not_self CHECK (word_no <> related_word_no)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- game_records table

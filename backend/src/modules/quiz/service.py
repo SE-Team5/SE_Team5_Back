@@ -1,16 +1,19 @@
 # backend/src/modules/quiz/service.py
 from .repository import QuizRepository
+from ..auth.service import AuthService
 
 class QuizService:
     def __init__(self):
         self.repository = QuizRepository()
 
-    def get_new_quiz(self, limit=10):
+    def get_new_quiz(self, limit=10, auth_header=None):
         """사용자에게 제공할 퀴즈 세트 구성"""
         words = self.repository.get_random_words(limit=limit)
         if not words:
             return {"status": "error", "message": "단어장에 단어가 부족합니다."}
-        
+        # NOTE: Do NOT mark words as appeared here. Appearance should be recorded
+        # when the user SUBMITS the quiz result (handled in submit_result).
+
         return {
             "status": "success",
             "data": {
@@ -19,12 +22,27 @@ class QuizService:
             }
         }
 
-    def submit_result(self, user_no, total, correct):
+    def submit_result(self, user_no, total, correct, appeared_word_ids=None):
         """퀴즈 결과 저장 로직"""
         if total is None or correct is None:
             return {"status": "error", "message": "퀴즈 결과가 올바르지 않습니다."}
 
         success = self.repository.save_quiz_result(user_no, total, correct)
         if success:
+            # If client provided appeared word ids, record them now
+            try:
+                if appeared_word_ids:
+                    # ensure list of ints
+                    wids = [int(x) for x in appeared_word_ids]
+                    if wids:
+                        try:
+                            self.repository.mark_words_as_appeared(user_no, wids)
+                        except Exception:
+                            # non-fatal
+                            pass
+            except Exception:
+                # ignore failures in marking
+                pass
+
             return {"status": "success", "message": "결과가 성공적으로 저장되었습니다."}
         return {"status": "error", "message": "저장 중 오류가 발생했습니다."}

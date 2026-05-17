@@ -72,11 +72,15 @@ type QuizStartResponse = {
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const storedToken = typeof window !== 'undefined' ? sessionStorage.getItem('vocab_quiz_token') : null
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options?.headers || {}),
+    ...(storedToken ? { Authorization: `Bearer ${storedToken}` } : {}),
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options?.headers || {}),
-    },
+    headers,
     ...options,
   })
 
@@ -140,14 +144,24 @@ export const quizService = {
     return normalizedUserAnswer === normalizedCorrectAnswer
   },
 
-  async submitQuizResult(result: QuizResult, userNo: number): Promise<{ success: boolean }> {
+  async submitQuizResult(result: QuizResult, userNo: number, questions?: QuizQuestion[]): Promise<{ success: boolean }> {
+    const appearedWordIds: (string | number)[] = []
+    if (questions && Array.isArray(questions)) {
+      for (const q of questions) {
+        if (q?.word?.id) appearedWordIds.push(q.word.id)
+      }
+    }
+
+    const body = {
+      userNo,
+      total: result.totalQuestions,
+      correct: result.correctAnswers,
+      appearedWordIds,
+    }
+
     const response = await request<{ status?: string; success?: boolean }>(`/submit`, {
       method: 'POST',
-      body: JSON.stringify({
-        userNo,
-        total: result.totalQuestions,
-        correct: result.correctAnswers,
-      }),
+      body: JSON.stringify(body),
     })
 
     return { success: response.success ?? response.status === 'success' }

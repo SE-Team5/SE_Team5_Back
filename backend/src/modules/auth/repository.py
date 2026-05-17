@@ -68,3 +68,32 @@ class AuthRepository:
             print(f"Error deleting user: {e}")
             return False
 
+    def update_user_settings(self, user_no, nickname=None, email=None, daily_target_count=None):
+        """사용자 설정(닉네임, 이메일, daily_target_count) 업데이트"""
+        sets = []
+        params = []
+        if nickname is not None:
+            sets.append('user_nickname = %s')
+            params.append(nickname)
+        if email is not None:
+            sets.append('email = %s')
+            params.append(email)
+        if daily_target_count is not None:
+            sets.append('daily_target_count = %s')
+            params.append(daily_target_count)
+
+        if not sets:
+            return False
+
+        query = f"UPDATE LIVO.users SET {', '.join(sets)} WHERE user_no = %s"
+        params.append(user_no)
+        try:
+            # Execute update; treat successful execution (no exception) as success
+            # even if rowcount is 0 (no values changed). This allows saving the
+            # same values without reporting an error to the client.
+            db.execute_update(query, tuple(params))
+            return True
+        except Error as e:
+            print(f"Error updating user settings: {e}")
+            return False
+

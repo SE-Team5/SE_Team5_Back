@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import MainPage from './pages/MainPage'
 import WordbookPage from './pages/WordbookPage'
+import DayWordBookPage from './pages/DayWordBookPage'
 import MyPage from './pages/MyPage'
 import GamePage from './pages/GamePage'
 import QuizPage from './pages/QuizPage'
@@ -76,6 +77,16 @@ export default function App() {
             <ProtectedRoute>
               <AppLayout>
                 <WordbookPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/day-wordbook"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <DayWordBookPage />
               </AppLayout>
             </ProtectedRoute>
           }

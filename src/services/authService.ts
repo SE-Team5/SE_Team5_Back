@@ -135,4 +135,17 @@ export const authService = {
   async deleteAccount(): Promise<{ success: boolean; message?: string }> {
     return request('/user/delete', { method: 'POST' })
   }
+  ,
+  async updateProfile(data: { nickname?: string; email?: string; quizWordCount?: number }): Promise<{ success: boolean; message?: string }> {
+    // Map frontend quizWordCount to backend daily_target_count
+    const body: any = {}
+    if (data.nickname !== undefined) body.nickname = data.nickname
+    if (data.email !== undefined) body.email = data.email
+    if (data.quizWordCount !== undefined) body.daily_target_count = data.quizWordCount
+
+    return request('/user/settings', {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    })
+  }
 }

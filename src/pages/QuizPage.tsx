@@ -35,6 +35,7 @@ export default function QuizPage() {
       setState('question')
     } catch (error) {
       console.error('Failed to load quiz:', error)
+      setState('question')
     }
   }
 
@@ -67,16 +68,17 @@ export default function QuizPage() {
       setIsCorrect(null)
       setState('question')
     } else {
-      if (user?.id) {
+          if (user?.id) {
         try {
-          await quizService.submitQuizResult(
-            {
-              totalQuestions: questions.length,
-              correctAnswers: correctCount,
-              answers: [],
-            },
-            Number(user.id)
-          )
+            await quizService.submitQuizResult(
+              {
+                totalQuestions: questions.length,
+                correctAnswers: correctCount,
+                answers: [],
+              },
+              Number(user.id),
+              questions
+            )
 
           const dashboardResult = await dashboardService.getStatus(Number(user.id))
           if (dashboardResult.status === 'success' && dashboardResult.data) {

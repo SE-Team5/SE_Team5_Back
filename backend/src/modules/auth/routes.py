@@ -244,3 +244,23 @@ def reset_password():
     except Exception as e:
         print(f"Error in reset_password: {e}")
         return jsonify({"status": "error", "success": False, "message": "비밀번호 초기화 중 오류가 발생했습니다."}), 500
+
+
+@auth_bp.route('/user/settings', methods=['PATCH'])
+def update_user_settings():
+    """사용자 설정 업데이트 (닉네임, 이메일, daily_target_count)"""
+    try:
+        data = _get_request_data()
+        auth_header = request.headers.get('Authorization')
+
+        result = service.update_user_settings(auth_header, data)
+        response_body = {**result, 'success': result.get('status') == 'success'}
+
+        if result.get('status') == 'success':
+            return jsonify(response_body), 200
+        if result.get('message') == '인증 토큰이 유효하지 않습니다.':
+            return jsonify(response_body), 401
+        return jsonify(response_body), 400
+    except Exception as e:
+        print(f"Error in update_user_settings: {e}")
+        return jsonify({"status": "error", "success": False, "message": "설정 저장 중 오류가 발생했습니다."}), 500

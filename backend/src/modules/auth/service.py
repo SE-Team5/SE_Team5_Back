@@ -389,6 +389,35 @@ LIVO 비밀번호 초기화가 완료되었습니다.
             }
         }
 
+    def update_user_settings(self, auth_header, updates: dict):
+        """Update current user's settings (nickname, email, daily_target_count)."""
+        token_info = self.is_valid_access_token(auth_header)
+        if not token_info:
+            return {"status": "error", "message": "인증 토큰이 유효하지 않습니다."}
+
+        user_no = token_info.get('user_no')
+        nickname = updates.get('nickname')
+        email = updates.get('email')
+        daily_target = updates.get('daily_target_count')
+
+        # Basic validation
+        if nickname is not None and not self.is_valid_nickname(nickname):
+            return {"status": "error", "message": "닉네임이 유효하지 않습니다."}
+        if email is not None and not self.is_valid_email(email):
+            return {"status": "error", "message": "이메일 형식이 올바르지 않습니다."}
+        if daily_target is not None:
+            try:
+                dt = int(daily_target)
+                if dt < 5 or dt > 100:
+                    return {"status": "error", "message": "daily_target_count 범위 오류"}
+            except Exception:
+                return {"status": "error", "message": "daily_target_count는 숫자여야 합니다."}
+
+        success = self.repository.update_user_settings(user_no, nickname=nickname, email=email, daily_target_count=daily_target)
+        if success:
+            return {"status": "success", "message": "설정이 저장되었습니다."}
+        return {"status": "error", "message": "설정 저장에 실패했습니다."}
+
     def change_password(self, auth_header, current_password, new_password):
         """비밀번호 변경"""
         token_info = self.is_valid_access_token(auth_header)

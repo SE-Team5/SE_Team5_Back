@@ -14,9 +14,13 @@ def create_app():
     # 설정 로드
     app.config['ENV'] = Config.FLASK_ENV
     app.config['DEBUG'] = Config.DEBUG
-    
-    # CORS 활성화
-    CORS(app, origins=Config.CORS_ORIGINS)
+    # CORS 활성화: API 엔드포인트에 대해 Authorization 헤더 허용
+    # Avoid using credentials with wildcard origin (browsers block this).
+    # If credentials are required, set explicit origins in Config.CORS_ORIGINS.
+    CORS(app,
+         resources={r"/api/*": {"origins": Config.CORS_ORIGINS}},
+         supports_credentials=False,
+         allow_headers=["Content-Type", "Authorization"])
     
     # 데이터베이스 연결
     try:
@@ -49,11 +53,11 @@ def register_blueprints(app):
                 if hasattr(module, bp_name):
                     blueprint = getattr(module, bp_name)
                     app.register_blueprint(blueprint)
-                    print(f"✓ Registered blueprint: {module_name}")
+                    print(f"Registered blueprint: {module_name}")
                 else:
-                    print(f"⚠ Blueprint '{bp_name}' not found in {module_name}")
+                    print(f"Blueprint '{bp_name}' not found in {module_name}")
             except Exception as e:
-                print(f"✗ Error loading module '{module_name}': {e}")
+                print(f"Error loading module '{module_name}': {e}")
 
 if __name__ == '__main__':
     app = create_app()

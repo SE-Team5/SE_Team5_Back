@@ -127,6 +127,18 @@ export default function MyPage() {
         }
       }
 
+      // Persist settings to backend and update local context
+      try {
+        const res = await authService.updateProfile({ nickname: formData.nickname, email: formData.email, quizWordCount })
+        if (!res || !res.success) {
+          toast.error(res?.message || '설정 저장에 실패했습니다.')
+          return
+        }
+      } catch (e) {
+        toast.error('설정 저장 중 오류가 발생했습니다.')
+        return
+      }
+
       updateUser({
         nickname: formData.nickname,
         email: formData.email,

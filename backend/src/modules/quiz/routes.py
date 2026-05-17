@@ -10,7 +10,8 @@ service = QuizService()
 def get_quiz():
     """새 퀴즈 세트 가져오기"""
     limit = request.args.get('limit', 10, type=int)
-    result = service.get_new_quiz(limit=limit)
+    auth_header = request.headers.get('Authorization')
+    result = service.get_new_quiz(limit=limit, auth_header=auth_header)
     return jsonify(result), 200 if result['status'] == 'success' else 400
 
 @quiz_bp.route('/submit', methods=['POST'])
@@ -21,9 +22,19 @@ def post_result():
     user_no = data.get('userNo')
     total = data.get('total')
     correct = data.get('correct')
+    # Accept either an explicit list of appeared word ids, or answers array
+    appeared_word_ids = data.get('appearedWordIds') or []
+    # If client provided answers array with word ids, extract them
+    answers = data.get('answers') or []
+    if answers and isinstance(answers, list):
+        for a in answers:
+            # support both {questionId, wordId, ...} and nested shapes
+            wid = a.get('wordId') if isinstance(a, dict) else None
+            if wid:
+                appeared_word_ids.append(wid)
 
     if not user_no:
         return jsonify({"status": "error", "message": "사용자 정보가 필요합니다."}), 400
 
-    result = service.submit_result(user_no, total, correct)
+    result = service.submit_result(user_no, total, correct, appeared_word_ids=appeared_word_ids)
     return jsonify(result), 201 if result['status'] == 'success' else 400

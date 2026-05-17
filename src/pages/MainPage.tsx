@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { dashboardService } from '@/services/dashboardService'
-import { Book, Gamepad2, Trophy, Calendar, CheckCircle2, XCircle } from 'lucide-react'
+import { Book, Gamepad2, Trophy, Calendar, CheckCircle2, XCircle, Sparkles } from 'lucide-react'
 
 export default function MainPage() {
   const { user, updateUser } = useAuth()
@@ -135,6 +135,26 @@ export default function MainPage() {
               <span className="text-sm text-accent font-medium group-hover:underline">
                 게임 시작 &rarr;
               </span>
+            </div>
+          </Link>
+        </div>
+
+        {/* Day Wordbook Section */}
+        <div className="mt-8 pt-8 border-t border-border">
+          <div className="mb-4">
+            <h2 className="text-lg font-bold text-foreground mb-2">오늘의 학습</h2>
+            <p className="text-sm text-muted-foreground">매일 정해진 개수의 새로운 단어를 학습하세요</p>
+          </div>
+          <Link
+            to="/day-wordbook"
+            className="block w-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-2xl p-6 shadow-md hover:shadow-lg hover:from-primary/90 hover:to-primary/70 transition-all"
+          >
+            <div className="flex items-center justify-center gap-3">
+              <Sparkles className="h-6 w-6" />
+              <div className="text-center">
+                <p className="text-lg font-bold">오늘의 단어 학습</p>
+                <p className="text-sm opacity-90">새로운 단어를 배우고 학습하세요</p>
+              </div>
             </div>
           </Link>
         </div>

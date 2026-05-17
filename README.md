@@ -1,4 +1,4 @@
-# 초기 설정법
+﻿# 초기 설정법
 
 1. 루트 [/.env.example](.env.example) 를 복사해 [/.env](.env) 를 만듭니다.
 2. [/.env](.env) 에 DB 정보와 SMTP 정보를 입력합니다.
@@ -29,8 +29,8 @@ pip install -r requirements.txt
 백엔드:
 프로젝트 루트 폴더에서
 ```bash
-cd backend
-python -m flask --app src.app run
+cd backend/src
+python app.py
 ```
 
 프론트엔드:

@@ -30,6 +30,32 @@ class QuizRepository:
         """
         return db.execute_update(query, (user_no, total, correct))
 
+    def mark_words_as_appeared(self, user_no, word_ids):
+        """user_words_status에 단어 출현(암기 플래그) 처리를 한다.
+
+        현재 규칙에 따라 퀴즈에 등장한 단어는 is_memorized를 TRUE로 설정하여
+        이후 Day 단어 선정에서 제외되도록 한다.
+        """
+        if not word_ids:
+            return 0
+        # Record appearance by upserting a user_words_status row and
+        # updating its updated_at timestamp so we can detect "appeared today"
+        # without setting is_memorized to TRUE.
+        inserted = 0
+        for wid in word_ids:
+            try:
+                query = """
+                    INSERT INTO user_words_status (user_id, word_id, is_favorite, is_memorized, created_at, updated_at)
+                    VALUES (%s, %s, FALSE, FALSE, NOW(), NOW())
+                    ON DUPLICATE KEY UPDATE updated_at = NOW()
+                """
+                db.execute_update(query, (user_no, wid))
+                inserted += 1
+            except Exception:
+                continue
+
+        return inserted
+
     def has_quiz_completed_today(self, user_no):
         """오늘 이미 퀴즈를 제출했는지 확인"""
         query = """
