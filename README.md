@@ -30,14 +30,14 @@ pip install -r requirements.txt
 프로젝트 루트 폴더에서
 ```bash
 cd backend
-python -m flask --app src.app run
+$env:PYTHONPATH="src"; python -m flask --app src.app run
 ```
 
 프론트엔드:
 프로젝트 루트 폴더에서
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 
