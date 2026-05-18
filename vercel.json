@@ -1,4 +1,12 @@
 {
-  "buildCommand": "pnpm run build",
-  "outputDirectory": "dist"
+  "experimentalServices": {
+    "frontend": {
+      "routePrefix": "/",
+      "framework": "vite"
+    },
+    "backend": {
+      "entrypoint": "backend",
+      "routePrefix": "/_/backend"
+    }
+  }
 }
