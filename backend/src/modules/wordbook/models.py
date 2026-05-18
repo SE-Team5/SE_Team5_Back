@@ -2,43 +2,58 @@
 from datetime import datetime
 from extensions import db
 
-
 class User(db.Model):
     __tablename__ = "users"
 
-    id                 = db.Column(db.Integer, primary_key=True)
-    email              = db.Column(db.String(255), unique=True, nullable=False)
+    user_no            = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id            = db.Column(db.String(50), nullable=False, unique=True)
+    user_nickname      = db.Column(db.String(50), nullable=False)
+    password_hash      = db.Column(db.String(100), nullable=False)
+    email              = db.Column(db.String(100), unique=True, nullable=False)
+    role               = db.Column(db.Enum('USER', 'ADMIN'), default='USER', nullable=False)
+    attendance_streak  = db.Column(db.Integer, default=0)
+    attendance_today   = db.Column(db.Boolean, default=False)
     daily_target_count = db.Column(db.Integer, default=20, nullable=False)
     created_at         = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at         = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class Word(db.Model):
     __tablename__ = "words"
 
-    id         = db.Column(db.Integer, primary_key=True)
-    # 공용 사전 기획에 맞춰 user_id 컬럼 없음
-    term       = db.Column(db.String(255), nullable=False, unique=True)  # 중복 단어 방지
-    definition = db.Column(db.Text, nullable=False)
-    example    = db.Column(db.Text)
-    memo       = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    word_no          = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    word_english     = db.Column(db.String(100), nullable=False, unique=True)
+    word_korean      = db.Column(db.String(100), nullable=False)
+    example_sentence = db.Column(db.Text)
+    # 기획 스키마에 맞춰 created_at, updated_at, memo 제거
+
+
+class GameRecord(db.Model):
+    __tablename__ = "game_records"
+    
+    # 🔧 추가: LIVO_schema.sql에는 있지만 기존 models.py에 없던 테이블 추가
+    record_id       = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id         = db.Column(db.Integer, db.ForeignKey("users.user_no", ondelete="CASCADE"), nullable=False)
+    total_words     = db.Column(db.Integer, nullable=False)
+    correct_answers = db.Column(db.Integer, nullable=False)
+    played_at       = db.Column(db.DateTime, nullable=False)
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at      = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class UserWordStatus(db.Model):
     __tablename__ = "user_words_status"
 
-    id              = db.Column(db.Integer, primary_key=True)
-    # 🔧 수정 1: ForeignKey 문자열 정상화
-    user_id         = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    word_id         = db.Column(db.Integer, db.ForeignKey("words.id"), nullable=False)
+    status_id       = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    # 🔧 수정: ForeignKey가 'users.id'가 아니라 'users.user_no', 'words.word_no'를 바라보도록 변경
+    user_id         = db.Column(db.Integer, db.ForeignKey("users.user_no", ondelete="CASCADE"), nullable=False)
+    word_id         = db.Column(db.Integer, db.ForeignKey("words.word_no", ondelete="CASCADE"), nullable=False)
+    is_favorite     = db.Column(db.Boolean, default=False, nullable=False)
     is_memorized    = db.Column(db.Boolean, default=False, nullable=False)
-    is_bookmarked   = db.Column(db.Boolean, default=False, nullable=False)
-    study_count     = db.Column(db.Integer, default=0, nullable=False)
-    last_studied_at = db.Column(db.DateTime, nullable=True)
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at      = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # 🔧 수정 2: (user_id, word_id) 복합 유니크 제약
-    # 동일 유저가 동일 단어에 대해 row가 2개 이상 생기는 것을 DB 레벨에서 방지
+    # 🔧 수정: SQL 제약조건 이름(unique_user_word)과 동일하게 맞춤
     __table_args__ = (
-        db.UniqueConstraint("user_id", "word_id", name="uq_user_word"),
+        db.UniqueConstraint("user_id", "word_id", name="unique_user_word"),
     )
