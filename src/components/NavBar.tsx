@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { cn } from '@/lib/utils'
-import { Home, Book, User, Gamepad2, Settings, LogOut, Menu, X } from 'lucide-react'
+import { Home, Book, User, Gamepad2, Settings, LogOut, Menu, X, Sprout } from 'lucide-react'
 import { useState } from 'react'
 
 export default function NavBar() {
@@ -13,6 +13,7 @@ export default function NavBar() {
     { path: '/', label: '메인화면', icon: Home },
     { path: '/mypage', label: '마이페이지', icon: User },
     { path: '/game', label: '게임', icon: Gamepad2 },
+    { path: '/pet', label: '마이 펫', icon: Sprout },
     ...(isAdmin ? [{ path: '/admin', label: '관리자페이지', icon: Settings }] : [])
   ]
 

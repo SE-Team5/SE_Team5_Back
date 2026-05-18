@@ -5,6 +5,8 @@ import { quizService, type QuizQuestion, type DateFilter } from '@/services/quiz
 import { dashboardService } from '@/services/dashboardService'
 import { cn } from '@/lib/utils'
 import { Loader2, CheckCircle2, XCircle, ArrowRight, Trophy, RotateCcw } from 'lucide-react'
+import PetCheer from '@/components/PetCheer'
+import { petService } from '@/services/petService'
 
 type QuizState = 'loading' | 'question' | 'feedback' | 'result'
 
@@ -20,6 +22,8 @@ export default function QuizPage() {
   const [userAnswer, setUserAnswer] = useState('')
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
   const [correctCount, setCorrectCount] = useState(0)
+  const [showCheer, setShowCheer] = useState(false)
+  const [cheerMessage, setCheerMessage] = useState('')
 
   const currentQuestion = questions[currentIndex]
   const progress = questions.length > 0 ? ((currentIndex + 1) / questions.length) * 100 : 0
@@ -69,6 +73,13 @@ export default function QuizPage() {
       setUserAnswer('')
       setIsCorrect(null)
       setQuizState('question')
+
+      // 30% chance to show cheer message
+      if (Math.random() < 0.3) {
+        const message = petService.getRandomCheerMessage()
+        setCheerMessage(message)
+        setShowCheer(true)
+      }
     } else {
       if (user?.id) {
         try {
@@ -309,6 +320,14 @@ export default function QuizPage() {
           </div>
         )}
       </div>
+
+      {/* Pet Cheer Popup */}
+      {showCheer && (
+        <PetCheer
+          message={cheerMessage}
+          onClose={() => setShowCheer(false)}
+        />
+      )}
     </div>
   )
 }

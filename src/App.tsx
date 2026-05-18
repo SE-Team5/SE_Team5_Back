@@ -11,6 +11,7 @@ import MyPage from './pages/MyPage'
 import GamePage from './pages/GamePage'
 import QuizPage from './pages/QuizPage'
 import AdminPage from './pages/AdminPage'
+import PetPage from './pages/PetPage'
 
 // Components
 import NavBar from './components/NavBar'
@@ -113,6 +114,16 @@ export default function App() {
             <ProtectedRoute>
               <AppLayout>
                 <QuizPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/pet"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <PetPage />
               </AppLayout>
             </ProtectedRoute>
           }
