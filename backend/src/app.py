@@ -64,7 +64,10 @@ def register_blueprints(app):
             except Exception as e:
                 print(f"✗ Error loading module '{module_name}': {e}")
 
+# Vercel이 밖에서도 찾을 수 있도록 최상단에 app 객체 선언 (이 줄 추가!)
+app = create_app()
+
 if __name__ == '__main__':
-    app = create_app()
+    # (여기 있던 app = create_app() 은 지워도 되고 냅둬도 상관없습니다)
     app.run(host='0.0.0.0', port=Config.PORT, debug=Config.DEBUG)
 
