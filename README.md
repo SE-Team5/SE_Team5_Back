@@ -1,3 +1,5 @@
+https://se-team5-back.vercel.app/login
+배포 링크
 # 초기 설정법
 
 1. 루트 [/.env.example](.env.example) 를 복사해 [/.env](.env) 를 만듭니다.
@@ -46,3 +48,5 @@ DB 관련 프롬프트를 작성할 때는 [database/LIVO_schema.sql](database/L
 ## CSV 업로드 인코딩
 
 관리자 페이지에서 업로드하는 CSV 파일은 UTF-8 인코딩을 사용해야 합니다. 특히 Windows의 일부 프로그램에서 생성되는 BOM(Byte Order Mark)이 포함된 파일도 지원하지만, 기본적으로 UTF-8 형식으로 저장해 주세요.
+
+
