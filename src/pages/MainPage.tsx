@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { dashboardService } from '@/services/dashboardService'
 import { Book, Gamepad2, Trophy, Calendar, CheckCircle2, XCircle } from 'lucide-react'
+import MiniPet from '@/components/MiniPet'
 
 export default function MainPage() {
   const { user, updateUser } = useAuth()
@@ -137,6 +138,11 @@ export default function MainPage() {
               </span>
             </div>
           </Link>
+        </div>
+
+        {/* Mini Pet Widget */}
+        <div className="mt-6">
+          <MiniPet />
         </div>
 
         </div>
