@@ -37,7 +37,8 @@ export default function QuizPage() {
     try {
       const wordCount = state?.wordCount || user?.quizWordCount || 10
       const dateFilter = state?.dateFilter || 'all'
-      const quizQuestions = await quizService.generateQuiz(wordCount, user?.userNo, dateFilter)
+      const userNo = user?.id ? Number(user.id) : undefined
+      const quizQuestions = await quizService.generateQuiz(wordCount, userNo, dateFilter)
       setQuestions(quizQuestions)
       setQuizState('question')
     } catch (error) {

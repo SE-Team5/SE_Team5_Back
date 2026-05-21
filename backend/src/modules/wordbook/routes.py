@@ -52,7 +52,8 @@ def delete_word(word_id):
 @wordbook_bp.route("/daily-random", methods=["GET"])
 def get_daily_random_words():
     limit = request.args.get("limit", 10, type=int)
-    result = WordService.get_daily_random_words(user_id=None, limit=limit)
+    user_id = request.args.get("userNo", type=int)
+    result = WordService.get_daily_random_words(user_id=user_id, limit=limit)
     return jsonify(result), 200
 
 

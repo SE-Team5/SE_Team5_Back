@@ -1,4 +1,5 @@
 import { type Word } from './wordService'
+import { getApiBaseUrl } from './apiBase'
 
 export type QuizType = 
   | 'korean-to-english-choice'
@@ -42,7 +43,7 @@ export interface GameStatistics {
   avgAccuracy: number
 }
 
-const API_BASE_URL = 'http://localhost:5000/api/quiz'
+const API_BASE_URL = getApiBaseUrl('/_/backend/api/quiz')
 
 const quizTypes: QuizType[] = [
   'korean-to-english-choice',
@@ -132,7 +133,7 @@ export const quizService = {
       params.append('userNo', String(userNo))
     }
     
-    const response = await request<QuizStartResponse>(`/start?${params.toString()}`)
+    const response = await request<QuizStartResponse>(`/quiz/start?${params.toString()}`)
     const words = extractWords(response)
     const allWords = words
 
@@ -165,7 +166,7 @@ export const quizService = {
   },
 
   async submitQuizResult(result: QuizResult, userNo: number): Promise<{ success: boolean }> {
-    const response = await request<{ status?: string; success?: boolean }>(`/submit`, {
+    const response = await request<{ status?: string; success?: boolean }>(`/quiz/submit`, {
       method: 'POST',
       body: JSON.stringify({
         userNo,
@@ -178,17 +179,29 @@ export const quizService = {
   },
 
   async getGameHistory(userNo: number, limit: number = 20): Promise<GameRecord[]> {
-    const response = await request<{ status?: string; data?: GameRecord[] }>(`/history?userNo=${userNo}&limit=${limit}`)
-    return response.data ?? []
+    const response = await request<{ status?: string; data?: GameRecord[] }>(`/quiz/history?userNo=${userNo}&limit=${limit}`)
+    return (response.data ?? []).map(record => ({
+      ...record,
+      totalWords: Number(record.totalWords ?? 0),
+      correctAnswers: Number(record.correctAnswers ?? 0),
+      accuracyRate: Number(record.accuracyRate ?? 0),
+    }))
   },
 
   async getGameStatistics(userNo: number): Promise<GameStatistics> {
-    const response = await request<{ status?: string; data?: GameStatistics }>(`/statistics?userNo=${userNo}`)
-    return response.data ?? {
+    const response = await request<{ status?: string; data?: GameStatistics }>(`/quiz/statistics?userNo=${userNo}`)
+    const data = response.data ?? {
       totalGames: 0,
       totalWordsPlayed: 0,
       totalCorrect: 0,
       avgAccuracy: 0
+    }
+
+    return {
+      totalGames: Number(data.totalGames ?? 0),
+      totalWordsPlayed: Number(data.totalWordsPlayed ?? 0),
+      totalCorrect: Number(data.totalCorrect ?? 0),
+      avgAccuracy: Number(data.avgAccuracy ?? 0),
     }
   }
 }

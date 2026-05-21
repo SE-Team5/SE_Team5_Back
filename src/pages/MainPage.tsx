@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { dashboardService } from '@/services/dashboardService'
-import { Book, Gamepad2, Trophy, Calendar, CheckCircle2, XCircle } from 'lucide-react'
+import { Book, Gamepad2, Trophy, Calendar, CheckCircle2, XCircle, Sparkles } from 'lucide-react'
 import MiniPet from '@/components/MiniPet'
 
 export default function MainPage() {
@@ -135,6 +135,31 @@ export default function MainPage() {
             <div className="mt-4 pt-4 border-t border-border">
               <span className="text-sm text-accent font-medium group-hover:underline">
                 게임 시작 &rarr;
+              </span>
+            </div>
+          </Link>
+        </div>
+
+        {/* Day Wordbook Card */}
+        <div className="mt-4">
+          <Link
+            to="/day-wordbook"
+            className="group block bg-card rounded-2xl border border-border p-6 shadow-sm hover:border-warning/50 hover:shadow-md transition-all"
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 rounded-xl bg-warning/10 flex items-center justify-center group-hover:bg-warning/20 transition-colors">
+                <Sparkles className="h-7 w-7 text-warning" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-foreground mb-1">Day 단어장</h3>
+                <p className="text-sm text-muted-foreground">
+                  오늘 학습할 단어를 한국어와 영단어로 확인하세요
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-border">
+              <span className="text-sm text-warning font-medium group-hover:underline">
+                오늘의 단어 학습 &rarr;
               </span>
             </div>
           </Link>

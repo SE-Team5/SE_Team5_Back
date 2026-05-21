@@ -1,8 +1,24 @@
+import { getApiBaseUrl } from './apiBase'
+
 export interface Word {
   id: string
   english: string
   korean: string
   example?: string
+  relations?: WordRelations
+}
+
+export type WordRelation = {
+  id: string
+  english: string
+  korean: string
+  example?: string
+}
+
+export type WordRelations = {
+  synonym: WordRelation[]
+  antonym: WordRelation[]
+  homonym: WordRelation[]
 }
 
 type BackendWord = {
@@ -14,6 +30,26 @@ type BackendWord = {
   example_sentence?: string | null
   word_english?: string
   word_korean?: string
+  relations?: {
+    synonym?: Array<{
+      id?: string | number
+      english?: string
+      korean?: string
+      example?: string | null
+    }>
+    antonym?: Array<{
+      id?: string | number
+      english?: string
+      korean?: string
+      example?: string | null
+    }>
+    homonym?: Array<{
+      id?: string | number
+      english?: string
+      korean?: string
+      example?: string | null
+    }>
+  }
 }
 
 type PaginatedWordResponse = {
@@ -23,14 +59,29 @@ type PaginatedWordResponse = {
   words?: BackendWord[]
 }
 
-const API_BASE_URL = 'http://localhost:5000/api/wordbook'
+const API_BASE_URL = getApiBaseUrl('/_/backend/api')
 
 function toWord(word: BackendWord): Word {
+  const toRelation = (items?: Array<{ id?: string | number; english?: string; korean?: string; example?: string | null }>) =>
+    (items ?? []).map(item => ({
+      id: String(item.id ?? ''),
+      english: item.english ?? '',
+      korean: item.korean ?? '',
+      example: item.example ?? undefined,
+    }))
+
   return {
     id: String(word.id ?? word.word_no ?? ''),
     english: word.term ?? word.word_english ?? '',
     korean: word.definition ?? word.word_korean ?? '',
     example: word.example ?? word.example_sentence ?? undefined,
+    relations: word.relations
+      ? {
+          synonym: toRelation(word.relations.synonym),
+          antonym: toRelation(word.relations.antonym),
+          homonym: toRelation(word.relations.homonym),
+        }
+      : undefined,
   }
 }
 
@@ -146,13 +197,24 @@ function parseCsvWords(csvText: string): Array<Omit<Word, 'id'>> {
 
 export const wordService = {
   async getWords(): Promise<Word[]> {
-    const response = await request<PaginatedWordResponse>('?page=1&per_page=1000')
+    const response = await request<PaginatedWordResponse>('/wordbook?page=1&per_page=1000')
+    const items = response.items ?? response.words ?? []
+    return items.map(toWord)
+  },
+
+  async getDailyWords(limit: number = 10, userNo?: number): Promise<Word[]> {
+    const params = new URLSearchParams({ limit: String(limit) })
+    if (userNo) {
+      params.append('userNo', String(userNo))
+    }
+
+    const response = await request<{ items?: BackendWord[]; words?: BackendWord[] }>(`/wordbook/daily-random?${params.toString()}`)
     const items = response.items ?? response.words ?? []
     return items.map(toWord)
   },
 
   async getWordsPaginated(page: number, limit: number = 10): Promise<{ words: Word[]; total: number }> {
-    const response = await request<PaginatedWordResponse>(`?page=${page}&per_page=${limit}`)
+    const response = await request<PaginatedWordResponse>(`/wordbook?page=${page}&per_page=${limit}`)
     const items = response.items ?? response.words ?? []
     return {
       words: items.map(toWord),
@@ -161,7 +223,7 @@ export const wordService = {
   },
 
   async addWord(word: Omit<Word, 'id'>): Promise<Word> {
-    const response = await request<BackendWord>('', {
+    const response = await request<BackendWord>('/wordbook', {
       method: 'POST',
       body: JSON.stringify(toBackendPayload(word)),
     })
@@ -170,7 +232,7 @@ export const wordService = {
   },
 
   async updateWord(id: string, updates: Partial<Omit<Word, 'id'>>): Promise<Word | null> {
-    const response = await request<BackendWord>(`/${id}`, {
+    const response = await request<BackendWord>(`/wordbook/${id}`, {
       method: 'PUT',
       body: JSON.stringify({
         term: updates.english,
@@ -183,7 +245,7 @@ export const wordService = {
   },
 
   async deleteWord(id: string): Promise<boolean> {
-    await request<{ message?: string }>(`/${id}`, {
+    await request<{ message?: string }>(`/wordbook/${id}`, {
       method: 'DELETE',
     })
 

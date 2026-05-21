@@ -1,6 +1,8 @@
 // Dashboard Service - calls backend /api/dashboard/status
 
-const API_BASE_URL = 'http://localhost:5000/api'
+import { getApiBaseUrl } from './apiBase'
+
+const API_BASE_URL = getApiBaseUrl('/_/backend/api')
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const storedToken = typeof window !== 'undefined' ? sessionStorage.getItem('vocab_quiz_token') : null

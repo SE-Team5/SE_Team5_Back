@@ -1,6 +1,27 @@
 """Pet Repository"""
 from db import db
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
+
+
+KOREA_TZ = timezone(timedelta(hours=9))
+
+
+def _as_date(value):
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value.replace('Z', '+00:00')).date()
+        except ValueError:
+            try:
+                return datetime.strptime(value[:10], '%Y-%m-%d').date()
+            except ValueError:
+                return None
+    return None
 
 
 class PetRepository:
@@ -28,7 +49,7 @@ class PetRepository:
         is_studied=True: +1 (최대 10)
         is_studied=False: -1 (최소 1)
         """
-        today = date.today()
+        today = datetime.now(KOREA_TZ).date()
 
         # 오늘 이미 업데이트했는지 확인
         check_query = """
@@ -42,10 +63,10 @@ class PetRepository:
 
         row = results[0]
         current_level = row.get("pet_level", 1) or 1
-        last_updated = row.get("pet_last_updated")
+        last_updated = _as_date(row.get("pet_last_updated"))
 
         # 오늘 이미 업데이트했으면 현재 레벨 그대로 반환
-        if last_updated and str(last_updated) == str(today):
+        if last_updated == today:
             return {"pet_level": current_level}
 
         # 레벨 계산

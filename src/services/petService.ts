@@ -1,6 +1,8 @@
 // Pet Service - Flask backend integration with mock fallback
 
-const API_BASE_URL = 'http://localhost:5000/api'
+import { getApiBaseUrl } from './apiBase'
+
+const API_BASE_URL = getApiBaseUrl('/_/backend/api')
 
 // Fallback cheer messages
 const FALLBACK_CHEER_MESSAGES = [

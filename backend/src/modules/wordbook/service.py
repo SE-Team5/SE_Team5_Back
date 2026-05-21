@@ -68,8 +68,8 @@ class WordService:
 
     @staticmethod
     def get_daily_random_words(user_id=None, limit=10):
-        words = WordRepository.get_random_words(limit=limit)
-        return {"daily_target_count": limit, "items": words}
+        words = WordRepository.get_daily_words(user_id=user_id, limit=limit)
+        return {"daily_target_count": len(words), "items": words}
 
     @staticmethod
     def update_word_status(user_id, word_id, data):

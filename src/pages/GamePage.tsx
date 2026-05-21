@@ -21,21 +21,22 @@ export default function GamePage() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const [selectedFilter, setSelectedFilter] = useState<DateFilter>('all')
+  const userNo = user?.id ? Number(user.id) : undefined
 
   useEffect(() => {
-    if (activeTab === 'history' && user?.userNo) {
+    if (activeTab === 'history' && userNo) {
       loadGameData()
     }
-  }, [activeTab, user?.userNo])
+  }, [activeTab, userNo])
 
   const loadGameData = async () => {
-    if (!user?.userNo) return
+    if (!userNo) return
 
     setIsLoading(true)
     try {
       const [history, stats] = await Promise.all([
-        quizService.getGameHistory(user.userNo, 20),
-        quizService.getGameStatistics(user.userNo)
+        quizService.getGameHistory(userNo, 20),
+        quizService.getGameStatistics(userNo)
       ])
       setGameHistory(history)
       setGameStats(stats)

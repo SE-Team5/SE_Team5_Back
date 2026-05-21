@@ -13,6 +13,15 @@ def _to_word_dict(row):
     }
 
 
+def _to_related_word_dict(row):
+    return {
+        "id": str(row["related_word_no"]),
+        "english": row["word_english"],
+        "korean": row["word_korean"],
+        "example": row.get("example_sentence"),
+    }
+
+
 class UserRepository:
     @staticmethod
     def find_by_id(user_id) -> dict | None:
@@ -135,6 +144,71 @@ class WordRepository:
         """
         rows = db.execute_query(query, (limit,))
         return [_to_word_dict(row) for row in rows]
+
+    @staticmethod
+    def get_daily_words(user_id, limit: int) -> list:
+        if not user_id:
+            return WordRepository.get_random_words(limit)
+
+        query = """
+            SELECT
+                w.word_no,
+                w.word_english,
+                w.word_korean,
+                w.example_sentence
+            FROM LIVO.words w
+            LEFT JOIN LIVO.user_words_status s
+              ON s.word_id = w.word_no AND s.user_id = %s
+            WHERE s.status_id IS NULL OR s.is_memorized = 0
+            ORDER BY CRC32(CONCAT(w.word_no, '-', DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+09:00')), '-', %s))
+            LIMIT %s
+        """
+        rows = db.execute_query(query, (user_id, user_id, limit))
+        words = [_to_word_dict(row) for row in rows]
+        relations = WordRepository.get_relations_by_word_ids([int(word["id"]) for word in words if word.get("id")])
+
+        return [
+            {
+                **word,
+                "relations": relations.get(int(word["id"]), {"synonym": [], "antonym": [], "homonym": []}),
+            }
+            for word in words
+        ]
+
+    @staticmethod
+    def get_relations_by_word_ids(word_ids: list) -> dict:
+        if not word_ids:
+            return {}
+
+        placeholders = ",".join(["%s"] * len(word_ids))
+        query = f"""
+            SELECT
+                r.word_no,
+                r.relation_type,
+                w.word_no AS related_word_no,
+                w.word_english,
+                w.word_korean,
+                w.example_sentence
+            FROM LIVO.word_relations r
+            INNER JOIN LIVO.words w ON w.word_no = r.related_word_no
+            WHERE r.word_no IN ({placeholders})
+            ORDER BY r.word_no, r.relation_type, w.word_english
+        """
+        rows = db.execute_query(query, tuple(word_ids))
+
+        relations = {
+            word_id: {"synonym": [], "antonym": [], "homonym": []}
+            for word_id in word_ids
+        }
+
+        for row in rows:
+            word_id = row["word_no"]
+            relation_type = row["relation_type"]
+            if word_id not in relations:
+                relations[word_id] = {"synonym": [], "antonym": [], "homonym": []}
+            relations[word_id][relation_type].append(_to_related_word_dict(row))
+
+        return relations
 
 
 class UserWordStatusRepository:

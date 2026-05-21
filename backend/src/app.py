@@ -1,13 +1,28 @@
 """Flask Application"""
 import os
-import sys
 import importlib
 import atexit
 from flask import Flask
 from flask_cors import CORS
 from config import Config
 from db import db
-from scheduler import TaskScheduler
+
+try:
+    from scheduler import TaskScheduler
+except ModuleNotFoundError as error:
+    if error.name != 'apscheduler':
+        raise
+
+    TaskScheduler = None
+
+
+def _init_scheduler():
+    if TaskScheduler is None:
+        print("⚠ APScheduler is not installed in the active Python environment. Scheduler jobs are disabled.")
+        return
+
+    TaskScheduler.init()
+    TaskScheduler.add_inactivity_check_job()
 
 def create_app():
     """Flask 앱 생성 및 초기화"""
@@ -30,11 +45,11 @@ def create_app():
     register_blueprints(app)
     
     # 스케줄러 초기화
-    TaskScheduler.init()
-    TaskScheduler.add_inactivity_check_job()
-    
+    _init_scheduler()
+
     # 종료 시 스케줄러 정지
-    atexit.register(TaskScheduler.shutdown)
+    if TaskScheduler is not None:
+        atexit.register(TaskScheduler.shutdown)
     
     return app
 

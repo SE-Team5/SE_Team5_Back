@@ -1,16 +1,14 @@
-https://se-team5-back.vercel.app/login
-배포 링크
+[배포 링크](https://se-team5-back.vercel.app/login)
 # 초기 설정법
 
 1. 루트 [/.env.example](.env.example) 를 복사해 [/.env](.env) 를 만듭니다.
 2. [/.env](.env) 에 DB 정보와 SMTP 정보를 입력합니다.
 3. 백엔드 의존성을 설치합니다.
 
-```bash
-cd backend
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r backend\requirements.txt
 ```
 
 ## 환경 변수
@@ -29,18 +27,24 @@ pip install -r requirements.txt
 ## 서버 실행하는 법
 
 백엔드:
-프로젝트 루트 폴더에서
-```bash
-cd backend
-$env:PYTHONPATH="src"; python -m flask --app src.app run
+프로젝트 루트 폴더에서 PowerShell 기준으로 아래처럼 실행합니다.
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python backend\__main__.py
 ```
 
+`backend\src\app.py`는 Flask 앱 객체를 생성하는 파일이고, 실제 실행은 `backend\__main__.py`에서 합니다.
+
 프론트엔드:
-프로젝트 루트 폴더에서
+프로젝트 루트 폴더에서 아래 명령을 실행합니다.
+
 ```bash
 pnpm install
-pnpm run dev
+pnpm dev
 ```
+
+백엔드는 기본적으로 `http://localhost:5000`, 프론트엔드는 `http://localhost:5173`에서 실행됩니다.
 
 
 DB 관련 프롬프트를 작성할 때는 [database/LIVO_schema.sql](database/LIVO_schema.sql) 을 참고하면 됩니다. 노션에 올려둔 DB 기준으로 만든 `.sql` 파일입니다.
