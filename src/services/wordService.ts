@@ -43,9 +43,11 @@ function toBackendPayload(word: Omit<Word, 'id'>) {
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('vocab_quiz_token') : null
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options?.headers || {}),
     },
     ...options,
