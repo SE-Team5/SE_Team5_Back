@@ -1,10 +1,22 @@
 from flask import request, jsonify
 from . import wordbook_bp
 from .service import WordService
+from modules.auth.service import AuthService
+
+_auth_service = AuthService()
 
 
 def _get_request_data():
     return request.get_json(silent=True) or {}
+
+
+def _get_admin_token_info():
+    """Authorization 헤더에서 admin 토큰을 검증. 비admin이면 None 반환."""
+    auth_header = request.headers.get('Authorization')
+    token_info = _auth_service.is_valid_access_token(auth_header)
+    if not token_info or token_info.get('role') != 'admin':
+        return None
+    return token_info
 
 
 @wordbook_bp.route("", methods=["GET"])
@@ -28,6 +40,8 @@ def get_words():
 
 @wordbook_bp.route("", methods=["POST"])
 def create_word():
+    if not _get_admin_token_info():
+        return jsonify({"message": "관리자 권한이 필요합니다."}), 403
     data = _get_request_data()
     result = WordService.create_word(data=data)
     status_code = 201 if result and result.get("id") else 400
@@ -36,6 +50,8 @@ def create_word():
 
 @wordbook_bp.route("/<int:word_id>", methods=["PUT"])
 def update_word(word_id):
+    if not _get_admin_token_info():
+        return jsonify({"message": "관리자 권한이 필요합니다."}), 403
     data = _get_request_data()
     result = WordService.update_word(word_id=word_id, data=data)
     status_code = 200 if result and result.get("id") else 400
@@ -44,6 +60,8 @@ def update_word(word_id):
 
 @wordbook_bp.route("/<int:word_id>", methods=["DELETE"])
 def delete_word(word_id):
+    if not _get_admin_token_info():
+        return jsonify({"message": "관리자 권한이 필요합니다."}), 403
     result = WordService.delete_word(word_id=word_id)
     status_code = 200 if result.get("status") == "success" else 400
     return jsonify(result), status_code

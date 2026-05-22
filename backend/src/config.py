@@ -35,4 +35,7 @@ class Config:
     # Scheduler
     SCHEDULER_ENABLED = os.getenv('SCHEDULER_ENABLED', 'True') == 'True'
     INACTIVITY_HOURS = int(os.getenv('INACTIVITY_HOURS', 2000))  # 2000시간
+
+    # Gemini API
+    GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
     
