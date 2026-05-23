@@ -1,8 +1,30 @@
 """Wordbook Service"""
+import google.generativeai as genai
+from config import Config
 from .repository import WordRepository, UserWordStatusRepository, UserRepository
 
 
 class WordService:
+    @staticmethod
+    def _generate_example_with_gemini(term, definition):
+        """Gemini API를 이용해 영어 예문을 자동 생성. 실패 시 None 반환."""
+        api_key = Config.GEMINI_API_KEY
+        if not api_key:
+            return None
+        try:
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel('gemini-2.5-flash')
+            prompt = (
+                f'Write one natural English example sentence using the word "{term}" '
+                f'(Korean meaning: {definition}). '
+                f'Output only the sentence, nothing else.'
+            )
+            response = model.generate_content(prompt)
+            return response.text.strip()
+        except Exception as e:
+            print(f"Gemini API 예문 생성 실패: {e}")
+            return None
+
     @staticmethod
     def _normalize_word_payload(data):
         term = data.get("term") or data.get("english") or data.get("word_english")
@@ -40,6 +62,9 @@ class WordService:
         existing = WordRepository.find_by_term(term=term)
         if existing:
             return {"message": "이미 동일한 단어가 존재합니다."}
+
+        if not example:
+            example = WordService._generate_example_with_gemini(term, definition)
 
         return WordRepository.create(term=term, definition=definition, example=example)
 
