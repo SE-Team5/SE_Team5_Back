@@ -2,7 +2,7 @@
 # 초기 설정법
 
 1. 루트 [/.env.example](.env.example) 를 복사해 [/.env](.env) 를 만듭니다.
-2. [/.env](.env) 에 DB 정보와 SMTP 정보를 입력합니다.
+2. [/.env](.env) 에 DB 정보, SMTP 정보, Gemini API 키를 입력합니다.
 3. 백엔드 의존성을 설치합니다.
 
 ```powershell
@@ -21,6 +21,7 @@ pip install -r backend\requirements.txt
 | `DB_NAME` | `LIVO` 유지 | DB 이름 고정 |
 | `SMTP_USER` | 본인 네이버 이메일 | 인증 메일 발송 계정 |
 | `SMTP_PASSWORD` | 본인 네이버 앱 비밀번호 | 계정 비밀번호와 다름 |
+| `GEMINI_API_KEY` | 본인의 Gemini API 키 | 단어 예문 자동 생성에 사용 |
 
 메일 인증은 네이버 이메일로만 가능합니다.
 
