@@ -136,6 +136,17 @@
   }
 }
 
+/* ── Pet 식물 흔들림 애니메이션 ─────────────────────────── */
+@keyframes pet-sway {
+  0%, 100% { transform: rotate(-2deg) translateY(0px); }
+  50%       { transform: rotate(2deg)  translateY(-6px); }
+}
+
+.pet-sway {
+  animation: pet-sway 4s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+
 /* Toast Notification Styles */
 @layer components {
   /* Sonner Toaster container - allows interaction below */

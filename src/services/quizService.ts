@@ -1,11 +1,12 @@
 import { type Word } from './wordService'
 import { requestJson } from './apiBase'
 
-export type QuizType = 
+export type QuizType =
   | 'korean-to-english-choice'
   | 'korean-to-english-text'
   | 'english-to-korean-choice'
   | 'english-to-korean-text'
+  | 'matching'
 
 export type DateFilter = 'today' | 'week' | 'all'
 
@@ -13,8 +14,9 @@ export interface QuizQuestion {
   id: string
   type: QuizType
   word: Word
-  options?: string[] // For multiple choice questions
+  options?: string[]        // 객관식 선택지
   correctAnswer: string
+  matchingPairs?: Word[]    // matching 타입 전용: 4개의 단어 쌍
 }
 
 export interface QuizResult {
@@ -45,15 +47,21 @@ export interface GameStatistics {
 
 const API_BASE_URL = '/_/backend/api'
 
-const quizTypes: QuizType[] = [
+const nonMatchingTypes: Exclude<QuizType, 'matching'>[] = [
   'korean-to-english-choice',
   'korean-to-english-text',
   'english-to-korean-choice',
-  'english-to-korean-text'
+  'english-to-korean-text',
 ]
 
+const allQuizTypes: QuizType[] = [...nonMatchingTypes, 'matching']
+
 function getRandomQuizType(): QuizType {
-  return quizTypes[Math.floor(Math.random() * quizTypes.length)]
+  return allQuizTypes[Math.floor(Math.random() * allQuizTypes.length)]
+}
+
+function getRandomNonMatchingType(): Exclude<QuizType, 'matching'> {
+  return nonMatchingTypes[Math.floor(Math.random() * nonMatchingTypes.length)]
 }
 
 function generateOptions(correctAnswer: string, allWords: Word[], isEnglish: boolean): string[] {
@@ -118,31 +126,51 @@ export const quizService = {
     if (userNo) {
       params.append('userNo', String(userNo))
     }
-    
+
     const response = await request<QuizStartResponse>(`/quiz/start?${params.toString()}`)
     const words = extractWords(response)
     const allWords = words
+    const questions: QuizQuestion[] = []
+    let i = 0
 
-    return words.map((word, index) => {
+    while (i < words.length) {
       const type = getRandomQuizType()
-      const isKoreanToEnglish = type.startsWith('korean-to-english')
-      const isChoiceType = type.endsWith('choice')
-      
-      const correctAnswer = isKoreanToEnglish ? word.english : word.korean
-      
-      const question: QuizQuestion = {
-        id: `q-${index}-${Date.now()}`,
-        type,
-        word,
-        correctAnswer
+
+      // matching: 남은 단어가 4개 이상일 때만 생성
+      if (type === 'matching' && words.length - i >= 4) {
+        const matchingWords = words.slice(i, i + 4)
+        questions.push({
+          id: `q-matching-${i}-${Date.now()}`,
+          type: 'matching',
+          word: matchingWords[0],
+          correctAnswer: '',
+          matchingPairs: matchingWords,
+        })
+        i += 4
+      } else {
+        // matching이 뽑혔지만 단어 수 부족 → 일반 타입으로 대체
+        const actualType = type === 'matching' ? getRandomNonMatchingType() : type
+        const word = words[i]
+        const isKoreanToEnglish = actualType.startsWith('korean-to-english')
+        const correctAnswer = isKoreanToEnglish ? word.english : word.korean
+
+        const question: QuizQuestion = {
+          id: `q-${i}-${Date.now()}`,
+          type: actualType,
+          word,
+          correctAnswer,
+        }
+
+        if (actualType.endsWith('choice')) {
+          question.options = generateOptions(correctAnswer, allWords, isKoreanToEnglish)
+        }
+
+        questions.push(question)
+        i++
       }
-      
-      if (isChoiceType) {
-        question.options = generateOptions(correctAnswer, allWords, isKoreanToEnglish)
-      }
-      
-      return question
-    })
+    }
+
+    return questions
   },
 
   checkAnswer(question: QuizQuestion, userAnswer: string): boolean {

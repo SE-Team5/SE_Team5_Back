@@ -27,7 +27,7 @@ export default function MainPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 py-8 pb-48">
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">
@@ -165,12 +165,10 @@ export default function MainPage() {
           </Link>
         </div>
 
-        {/* Mini Pet Widget */}
-        <div className="mt-6">
-          <MiniPet />
         </div>
 
-        </div>
+      {/* 화면 우하단 고정 식물 펫 */}
+      <MiniPet />
     </div>
   )
 }

@@ -3,90 +3,101 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { petService, getPetImage, getPetStageName } from '@/services/petService'
 
+/** 화면 우하단에 배경처럼 고정되는 식물 펫 */
 export default function MiniPet() {
   const { user } = useAuth()
   const [petLevel, setPetLevel] = useState<number>(1)
-  const [loading, setLoading] = useState(true)
+  const [loaded, setLoaded] = useState(false)
+  const [imgError, setImgError] = useState(false)
 
   useEffect(() => {
     if (!user?.id) return
-    
-    const loadPetStatus = async () => {
-      setLoading(true)
-      try {
-        const userNo = Number(user.id)
-        if (!userNo) return
-        
-        const status = await petService.getPetStatus(userNo)
-        setPetLevel(status.pet_level)
-      } catch (error) {
-        console.error('Failed to load mini pet status:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
+    const userNo = Number(user.id)
+    if (!userNo) return
 
-    loadPetStatus()
+    petService.getPetStatus(userNo)
+      .then(s => setPetLevel(s.pet_level))
+      .catch(() => {})
+      .finally(() => setLoaded(true))
   }, [user?.id])
 
-  if (loading) {
-    return (
-      <div className="bg-card rounded-2xl border border-border p-4 shadow-sm animate-pulse">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-xl bg-secondary" />
-          <div className="flex-1">
-            <div className="h-4 bg-secondary rounded w-20 mb-2" />
-            <div className="h-3 bg-secondary rounded w-16" />
-          </div>
-        </div>
-      </div>
-    )
-  }
+  /** 이미지 로드 실패 시 이모지 표시 */
+  const fallbackEmoji = petLevel >= 7 ? '🌸' : petLevel >= 4 ? '🌿' : '🌱'
 
   return (
     <Link
       to="/pet"
-      className="group block bg-card rounded-2xl border border-border p-4 shadow-sm hover:border-primary/50 hover:shadow-md transition-all"
+      className="fixed bottom-0 right-6 sm:right-10 z-30 group select-none"
+      aria-label={`내 식물 펫 보기 (${getPetStageName(petLevel)} 단계 Lv.${petLevel})`}
     >
-      <div className="flex items-center gap-4">
-        {/* Mini Pet Image */}
-        <div className="relative">
-          <div className="w-16 h-16 rounded-xl bg-secondary/50 flex items-center justify-center overflow-hidden group-hover:bg-secondary/70 transition-colors">
+      {/* ── 호버 툴팁 ─────────────────────────────────── */}
+      <div
+        className="
+          absolute -top-11 left-1/2 -translate-x-1/2
+          bg-foreground/90 text-background
+          text-xs font-semibold
+          px-3 py-1.5 rounded-full shadow-lg
+          whitespace-nowrap pointer-events-none
+          opacity-0 group-hover:opacity-100
+          transition-opacity duration-200
+        "
+      >
+        🌱 LIVO · {getPetStageName(petLevel)} 단계
+        <span className="ml-1 text-primary-foreground/70">Lv.{petLevel}</span>
+      </div>
+
+      {/* ── 식물 영역 ─────────────────────────────────── */}
+      <div className="relative flex flex-col items-center">
+
+        {/* 레벨 뱃지 */}
+        <div
+          className="
+            absolute -top-2 -right-2 z-10
+            w-6 h-6 sm:w-7 sm:h-7
+            bg-primary text-primary-foreground
+            text-[10px] sm:text-xs font-bold
+            rounded-full shadow-md ring-2 ring-background
+            flex items-center justify-center
+            transition-transform duration-300 group-hover:scale-110
+          "
+        >
+          {petLevel}
+        </div>
+
+        {/* 식물 이미지 */}
+        <div className="h-28 sm:h-36 md:h-44 w-auto flex items-end justify-center">
+          {!imgError ? (
             <img
               src={getPetImage(petLevel)}
-              alt={`LIVO - ${getPetStageName(petLevel)} 단계`}
-              className="w-full h-full object-contain"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement
-                target.style.display = 'none'
-                const parent = target.parentElement
-                if (parent && !parent.querySelector('.fallback-text')) {
-                  const fallback = document.createElement('div')
-                  fallback.className = 'fallback-text text-2xl'
-                  fallback.textContent = petLevel >= 7 ? '🌸' : petLevel >= 4 ? '🌱' : '🌿'
-                  parent.appendChild(fallback)
-                }
-              }}
+              alt={`LIVO 식물 - ${getPetStageName(petLevel)}`}
+              className="
+                h-full w-auto object-contain
+                pet-sway
+                drop-shadow-xl
+                transition-transform duration-300
+                group-hover:scale-110
+              "
+              style={loaded ? undefined : { opacity: 0 }}
+              onLoad={() => setLoaded(true)}
+              onError={() => { setImgError(true); setLoaded(true) }}
             />
-          </div>
-          {/* Level Badge */}
-          <div className="absolute -top-1 -right-1 w-6 h-6 bg-primary text-primary-foreground text-xs font-bold rounded-full flex items-center justify-center">
-            {petLevel}
-          </div>
+          ) : (
+            /* 이미지 없을 때 이모지 폴백 */
+            <span
+              className="
+                text-6xl sm:text-7xl md:text-8xl leading-none
+                pet-sway drop-shadow-lg
+                transition-transform duration-300
+                group-hover:scale-110
+              "
+            >
+              {fallbackEmoji}
+            </span>
+          )}
         </div>
 
-        {/* Pet Info */}
-        <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-foreground">LIVO</h3>
-          <p className="text-sm text-muted-foreground truncate">
-            {getPetStageName(petLevel)} 단계 (Lv. {petLevel})
-          </p>
-        </div>
-
-        {/* Arrow */}
-        <div className="text-muted-foreground group-hover:text-primary transition-colors">
-          <span className="text-sm font-medium">&rarr;</span>
-        </div>
+        {/* 바닥 그림자 — 식물이 땅에 서 있는 느낌 */}
+        <div className="w-12 sm:w-16 h-2 bg-black/10 dark:bg-white/10 rounded-full blur-sm -mt-1" />
       </div>
     </Link>
   )
