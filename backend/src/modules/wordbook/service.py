@@ -1,9 +1,17 @@
 """Wordbook Service"""
 from functools import lru_cache
 
-import google.generativeai as genai
 from config import Config
 from .repository import WordRepository, UserWordStatusRepository, UserRepository
+
+
+def _get_genai():
+    """google.generativeai를 lazy import (Python 3.14 호환성 문제 우회)"""
+    try:
+        import google.generativeai as genai
+        return genai
+    except Exception:
+        return None
 
 
 @lru_cache(maxsize=1)
@@ -13,6 +21,14 @@ def _probe_gemini_api_key(api_key):
             "configured": False,
             "valid": False,
             "message": "Gemini API 키가 설정되지 않았습니다.",
+        }
+
+    genai = _get_genai()
+    if genai is None:
+        return {
+            "configured": False,
+            "valid": False,
+            "message": "google-generativeai 패키지를 불러올 수 없습니다.",
         }
 
     try:
@@ -45,6 +61,9 @@ class WordService:
         """Gemini API를 이용해 영어 예문을 자동 생성. 실패 시 None 반환."""
         api_key = Config.GEMINI_API_KEY
         if not api_key:
+            return WordService._build_fallback_example(term, definition)
+        genai = _get_genai()
+        if genai is None:
             return WordService._build_fallback_example(term, definition)
         try:
             genai.configure(api_key=api_key)

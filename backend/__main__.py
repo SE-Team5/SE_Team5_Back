@@ -14,3 +14,4 @@ if __name__ == '__main__':
     print("  Flask 앱이 시작되었습니다")
     print("="*50 + "\n")
     app.run(host='0.0.0.0', port=Config.PORT, debug=Config.DEBUG, use_reloader=False)
+
