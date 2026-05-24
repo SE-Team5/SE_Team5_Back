@@ -142,6 +142,24 @@ def login():
         print(f"Error in login: {e}")
         return jsonify({"status": "error", "success": False, "message": "로그인 중 오류가 발생했습니다."}), 500
 
+@auth_bp.route('/me', methods=['GET'])
+@auth_bp.route('/auth/me', methods=['GET'])
+def get_current_user():
+    """현재 로그인한 사용자 정보 조회"""
+    try:
+        auth_header = request.headers.get('Authorization')
+        result = service.get_current_user(auth_header)
+        response_body = {**result, 'success': result['status'] == 'success'}
+
+        if result['status'] == 'success':
+            return jsonify(response_body), 200
+
+        return jsonify(response_body), 401
+
+    except Exception as e:
+        print(f"Error in get_current_user: {e}")
+        return jsonify({"status": "error", "success": False, "message": "사용자 정보 조회 중 오류가 발생했습니다."}), 500
+
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
     """로그아웃"""

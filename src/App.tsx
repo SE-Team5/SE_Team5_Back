@@ -6,6 +6,7 @@ import { Toaster } from 'sonner'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import MainPage from './pages/MainPage'
+import DayWordbookPage from './pages/DayWordbookPage'
 import WordbookPage from './pages/WordbookPage'
 import MyPage from './pages/MyPage'
 import GamePage from './pages/GamePage'
@@ -84,6 +85,16 @@ export default function App() {
             <ProtectedRoute>
               <AppLayout>
                 <WordbookPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/day-wordbook"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <DayWordbookPage />
               </AppLayout>
             </ProtectedRoute>
           }

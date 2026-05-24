@@ -24,9 +24,9 @@ class DatabaseConnection:
                 pool_reset_session=True,
                 **Config.DB_CONFIG
             )
-            print("✓ Database connected successfully")
+            print("[OK] Database connected successfully")
         except Error as e:
-            print(f"✗ Database connection failed: {e}")
+            print(f"[ERR] Database connection failed: {e}")
             raise
 
     def get_connection(self):
@@ -38,7 +38,7 @@ class DatabaseConnection:
     def close(self):
         """풀 종료 (앱 종료 시)"""
         DatabaseConnection._pool = None
-        print("✓ Database connection pool closed")
+        print("[OK] Database connection pool closed")
     
     def execute_query(self, query, params=None):
         """쿼리 실행 및 결과 반환"""

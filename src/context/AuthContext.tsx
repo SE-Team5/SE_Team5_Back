@@ -60,13 +60,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stored = sessionStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored))
-      } catch {
-        sessionStorage.removeItem(STORAGE_KEY)
+    const token = sessionStorage.getItem(TOKEN_KEY)
+
+    const restoreSession = async () => {
+      if (token) {
+        try {
+          const currentUserResult = await authService.getCurrentUser()
+          if (currentUserResult.success && currentUserResult.user) {
+            const userData = buildUserFromBackend(currentUserResult.user)
+            setUser(userData)
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(userData))
+            return
+          }
+        } catch {
+          // Fall back to stored user below.
+        }
+      }
+
+      if (stored) {
+        try {
+          const parsedUser = JSON.parse(stored) as User
+          if (Number.isFinite(Number(parsedUser.id))) {
+            setUser(parsedUser)
+            return
+          }
+          sessionStorage.removeItem(STORAGE_KEY)
+        } catch {
+          sessionStorage.removeItem(STORAGE_KEY)
+        }
       }
     }
+
+    void restoreSession()
   }, [])
 
   const login = async (username: string, password: string): Promise<boolean> => {

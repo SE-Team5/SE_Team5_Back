@@ -1,8 +1,14 @@
 # backend/src/modules/quiz/repository.py
+from datetime import datetime, timedelta, timezone
+
 from db import db
 
 
 class QuizRepository:
+    def _korea_date_string(self, day_offset=0):
+        korea_time = datetime.now(timezone(timedelta(hours=9))) - timedelta(days=day_offset)
+        return korea_time.strftime("%Y-%m-%d")
+
     def get_random_words(self, limit=10):
         """랜덤하게 단어를 가져와 퀴즈 생성"""
         query = """
@@ -12,6 +18,27 @@ class QuizRepository:
             LIMIT %s
         """
         rows = db.execute_query(query, (limit,))
+        return [
+            {
+                "id": row["word_no"],
+                "english": row["word_english"],
+                "korean": row["word_korean"],
+                "example": row.get("example_sentence"),
+            }
+            for row in rows
+        ]
+
+    def _get_daily_words_for_date(self, user_no, date_string, limit=10):
+        query = """
+            SELECT w.word_no, w.word_english, w.word_korean, w.example_sentence
+            FROM LIVO.words w
+            LEFT JOIN LIVO.user_words_status uws
+              ON w.word_no = uws.word_id AND uws.user_id = %s
+            WHERE uws.status_id IS NULL OR uws.is_memorized = 0
+            ORDER BY CRC32(CONCAT(w.word_no, '-', %s, '-', %s))
+            LIMIT %s
+        """
+        rows = db.execute_query(query, (user_no, date_string, user_no, limit))
         return [
             {
                 "id": row["word_no"],
@@ -70,36 +97,32 @@ class QuizRepository:
         date_filter: 'today', 'week', 'all'
         """
         if date_filter == 'today':
-            query = """
-                SELECT w.word_no, w.word_english, w.word_korean, w.example_sentence
-                FROM LIVO.words w
-                INNER JOIN LIVO.user_words_status uws ON w.word_no = uws.word_id
-                WHERE uws.user_id = %s
-                  AND DATE(uws.created_at) = CURDATE()
-                ORDER BY RAND()
-                LIMIT %s
-            """
-        elif date_filter == 'week':
-            query = """
-                SELECT w.word_no, w.word_english, w.word_korean, w.example_sentence
-                FROM LIVO.words w
-                INNER JOIN LIVO.user_words_status uws ON w.word_no = uws.word_id
-                WHERE uws.user_id = %s
-                  AND uws.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-                ORDER BY RAND()
-                LIMIT %s
-            """
-        else:  # 'all'
-            query = """
-                SELECT w.word_no, w.word_english, w.word_korean, w.example_sentence
-                FROM LIVO.words w
-                INNER JOIN LIVO.user_words_status uws ON w.word_no = uws.word_id
-                WHERE uws.user_id = %s
-                ORDER BY RAND()
-                LIMIT %s
-            """
-        
-        rows = db.execute_query(query, (user_no, limit))
+            return self._get_daily_words_for_date(user_no, self._korea_date_string(0), limit)
+
+        if date_filter == 'week':
+            seen_word_ids = set()
+            items = []
+
+            for day_offset in range(7):
+                daily_words = self._get_daily_words_for_date(user_no, self._korea_date_string(day_offset), limit)
+                for word in daily_words:
+                    word_id = word.get('id')
+                    if word_id in seen_word_ids:
+                        continue
+                    seen_word_ids.add(word_id)
+                    items.append(word)
+                    if len(items) >= limit:
+                        return items
+
+            return items
+
+        query = """
+            SELECT word_no, word_english, word_korean, example_sentence
+            FROM LIVO.words
+            ORDER BY RAND()
+            LIMIT %s
+        """
+        rows = db.execute_query(query, (limit,))
         return [
             {
                 "id": row["word_no"],

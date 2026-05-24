@@ -1,13 +1,28 @@
 """Flask Application"""
 import os
-import sys
 import importlib
 import atexit
 from flask import Flask
 from flask_cors import CORS
 from config import Config
 from db import db
-from scheduler import TaskScheduler
+
+try:
+    from scheduler import TaskScheduler
+except ModuleNotFoundError as error:
+    if error.name != 'apscheduler':
+        raise
+
+    TaskScheduler = None
+
+
+def _init_scheduler():
+    if TaskScheduler is None:
+        print("[WARN] APScheduler is not installed in the active Python environment. Scheduler jobs are disabled.")
+        return
+
+    TaskScheduler.init()
+    TaskScheduler.add_inactivity_check_job()
 
 def create_app():
     """Flask 앱 생성 및 초기화"""
@@ -24,17 +39,17 @@ def create_app():
     try:
         db.connect()
     except Exception as e:
-        print(f"⚠ Warning: Database connection failed on startup: {e}")
+        print(f"[WARN] Database connection failed on startup: {e}")
     
     # 블루프린트 자동 탐지 및 등록
     register_blueprints(app)
     
     # 스케줄러 초기화
-    TaskScheduler.init()
-    TaskScheduler.add_inactivity_check_job()
-    
+    _init_scheduler()
+
     # 종료 시 스케줄러 정지
-    atexit.register(TaskScheduler.shutdown)
+    if TaskScheduler is not None:
+        atexit.register(TaskScheduler.shutdown)
     
     return app
 
@@ -58,16 +73,16 @@ def register_blueprints(app):
                 if hasattr(module, bp_name):
                     blueprint = getattr(module, bp_name)
                     app.register_blueprint(blueprint)
-                    print(f"✓ Registered blueprint: {module_name}")
+                    print(f"[OK] Registered blueprint: {module_name}")
                 else:
-                    print(f"⚠ Blueprint '{bp_name}' not found in {module_name}")
+                    print(f"[WARN] Blueprint '{bp_name}' not found in {module_name}")
             except Exception as e:
-                print(f"✗ Error loading module '{module_name}': {e}")
+                print(f"[ERR] Error loading module '{module_name}': {e}")
 
 # Vercel이 밖에서도 찾을 수 있도록 최상단에 app 객체 선언 (이 줄 추가!)
 app = create_app()
 
 if __name__ == '__main__':
     # (여기 있던 app = create_app() 은 지워도 되고 냅둬도 상관없습니다)
-    app.run(host='0.0.0.0', port=Config.PORT, debug=Config.DEBUG)
+    app.run(host='0.0.0.0', port=Config.PORT, debug=Config.DEBUG, use_reloader=False)
 
