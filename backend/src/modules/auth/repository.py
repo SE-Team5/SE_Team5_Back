@@ -42,6 +42,12 @@ class AuthRepository:
         results = db.execute_query(query, (user_id,))
         return results[0] if results else None
 
+    def get_user_by_user_no(self, user_no):
+        """사용자 번호로 사용자 조회"""
+        query = "SELECT user_no, user_id, user_nickname, email, role FROM LIVO.users WHERE user_no = %s"
+        results = db.execute_query(query, (user_no,))
+        return results[0] if results else None
+
     def get_user_by_userid_and_email(self, user_id, email):
         """사용자 ID와 이메일이 일치하는 사용자 조회"""
         query = "SELECT user_no, user_id, user_nickname, email FROM LIVO.users WHERE user_id = %s AND email = %s"

@@ -1,26 +1,11 @@
 // Auth Service - Flask backend integration
 
-import { getApiBaseUrl } from './apiBase'
+import { requestJson } from './apiBase'
 
-const API_BASE_URL = getApiBaseUrl('/_/backend/api')
+const API_BASE_URL = '/_/backend/api'
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const storedToken = typeof window !== 'undefined' ? sessionStorage.getItem('vocab_quiz_token') : null
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(storedToken ? { Authorization: `Bearer ${storedToken}` } : {}),
-      ...(options?.headers || {})
-    },
-    ...options,
-  })
-
-  const data = await response.json().catch(() => ({}))
-  if (!response.ok && !data) {
-    throw new Error('Request failed')
-  }
-
-  return data as T
+  return requestJson<T>(API_BASE_URL, path, options)
 }
 
 export interface LoginRequest {
@@ -32,10 +17,23 @@ export interface LoginResponse {
   success: boolean
   token?: string
   user?: {
-    id: string
+    id: string | number
     username: string
+    nickname?: string
     email: string
     role: 'ADMIN' | 'USER'
+  }
+  message?: string
+}
+
+export interface CurrentUserResponse {
+  success: boolean
+  user?: {
+    id: string | number
+    username: string
+    nickname?: string
+    email: string
+    role: 'ADMIN' | 'USER' | 'admin' | 'user'
   }
   message?: string
 }
@@ -81,6 +79,12 @@ export const authService = {
         userId: data.username,
         password: data.password,
       }),
+    })
+  },
+
+  async getCurrentUser(): Promise<CurrentUserResponse> {
+    return request<CurrentUserResponse>('/me', {
+      method: 'GET',
     })
   },
 

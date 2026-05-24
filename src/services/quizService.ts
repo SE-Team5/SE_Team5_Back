@@ -1,5 +1,5 @@
 import { type Word } from './wordService'
-import { getApiBaseUrl } from './apiBase'
+import { requestJson } from './apiBase'
 
 export type QuizType = 
   | 'korean-to-english-choice'
@@ -43,7 +43,7 @@ export interface GameStatistics {
   avgAccuracy: number
 }
 
-const API_BASE_URL = getApiBaseUrl('/_/backend/api/quiz')
+const API_BASE_URL = '/_/backend/api'
 
 const quizTypes: QuizType[] = [
   'korean-to-english-choice',
@@ -90,21 +90,7 @@ type QuizStartResponse = {
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options?.headers || {}),
-    },
-    ...options,
-  })
-
-  const data = await response.json().catch(() => ({}))
-  if (!response.ok) {
-    const message = typeof data?.message === 'string' ? data.message : 'Request failed'
-    throw new Error(message)
-  }
-
-  return data as T
+  return requestJson<T>(API_BASE_URL, path, options)
 }
 
 function toWord(word: BackendWord): Word {

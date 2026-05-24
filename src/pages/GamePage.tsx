@@ -20,6 +20,7 @@ export default function GamePage() {
     avgAccuracy: 0
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [loadError, setLoadError] = useState('')
   const [selectedFilter, setSelectedFilter] = useState<DateFilter>('all')
   const userNo = user?.id ? Number(user.id) : undefined
 
@@ -33,6 +34,7 @@ export default function GamePage() {
     if (!userNo) return
 
     setIsLoading(true)
+    setLoadError('')
     try {
       const [history, stats] = await Promise.all([
         quizService.getGameHistory(userNo, 20),
@@ -43,6 +45,7 @@ export default function GamePage() {
     } catch (error) {
       toast.error('게임 이력을 불러올 수 없습니다.')
       console.error(error)
+      setLoadError('게임 이력을 불러오지 못했습니다. 로그인 정보를 다시 확인해주세요.')
     } finally {
       setIsLoading(false)
     }
@@ -208,6 +211,12 @@ export default function GamePage() {
 
           {/* Tab 2: Game History */}
           <TabsContent value="history" className="space-y-6">
+            {!userNo ? (
+              <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+                <p className="font-medium text-foreground mb-2">게임 이력을 불러올 수 없습니다.</p>
+                <p className="text-sm text-muted-foreground">로그인 정보가 아직 복원되지 않았습니다. 다시 로그인해 주세요.</p>
+              </div>
+            ) : null}
             {/* Statistics Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <Card className="p-4 text-center">
@@ -247,7 +256,11 @@ export default function GamePage() {
                 최근 게임 이력
               </h2>
 
-              {isLoading ? (
+              {loadError ? (
+                <div className="text-center py-8">
+                  <p className="text-foreground font-medium">{loadError}</p>
+                </div>
+              ) : isLoading ? (
                 <div className="text-center py-8">
                   <p className="text-muted-foreground">로딩 중...</p>
                 </div>

@@ -1,23 +1,11 @@
 // Dashboard Service - calls backend /api/dashboard/status
 
-import { getApiBaseUrl } from './apiBase'
+import { requestJson } from './apiBase'
 
-const API_BASE_URL = getApiBaseUrl('/_/backend/api')
+const API_BASE_URL = '/_/backend/api'
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const storedToken = typeof window !== 'undefined' ? sessionStorage.getItem('vocab_quiz_token') : null
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(storedToken ? { Authorization: `Bearer ${storedToken}` } : {}),
-      ...(options?.headers || {})
-    },
-    ...options,
-  })
-
-  const data = await response.json().catch(() => ({}))
-  if (!response.ok && !data) throw new Error('Request failed')
-  return data as T
+  return requestJson<T>(API_BASE_URL, path, options)
 }
 
 export interface DashboardStatusResponse {

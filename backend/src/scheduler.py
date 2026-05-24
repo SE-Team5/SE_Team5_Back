@@ -16,13 +16,13 @@ class TaskScheduler:
     def init(cls):
         """스케줄러 초기화"""
         if not Config.SCHEDULER_ENABLED:
-            print("⚠ Scheduler is disabled")
+            print("[WARN] Scheduler is disabled")
             return
         
         if cls.scheduler is None:
             cls.scheduler = BackgroundScheduler()
             cls.scheduler.start()
-            print("✓ Scheduler initialized")
+            print("[OK] Scheduler initialized")
     
     @classmethod
     def add_inactivity_check_job(cls):
@@ -38,7 +38,7 @@ class TaskScheduler:
             name='Check and email inactive users',
             replace_existing=True
         )
-        print("✓ Added inactivity check job (daily at 09:00)")
+        print("[OK] Added inactivity check job (daily at 09:00)")
     
     @classmethod
     def check_and_email_inactive_users(cls):
@@ -65,7 +65,7 @@ class TaskScheduler:
             rows = db.execute_query(query, (inactivity_threshold,))
             
             if not rows:
-                print("✓ No inactive users found")
+                print("[OK] No inactive users found")
                 return
             
             sent_count = 0
@@ -85,16 +85,16 @@ class TaskScheduler:
                     """
                     db.execute_update(update_query, (user_no,))
                     sent_count += 1
-                    print(f"  ✓ Email sent to {nickname} ({email}) - Last active: {last_active}")
+                    print(f"  [OK] Email sent to {nickname} ({email}) - Last active: {last_active}")
             
-            print(f"\n✓ Inactivity check completed. {sent_count} emails sent.\n")
+            print(f"\n[OK] Inactivity check completed. {sent_count} emails sent.\n")
             
         except Exception as e:
-            print(f"✗ Error during inactivity check: {e}")
+            print(f"[ERR] Error during inactivity check: {e}")
     
     @classmethod
     def shutdown(cls):
         """스케줄러 종료"""
         if cls.scheduler is not None:
             cls.scheduler.shutdown()
-            print("✓ Scheduler shutdown")
+            print("[OK] Scheduler shutdown")

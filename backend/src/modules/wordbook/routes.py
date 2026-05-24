@@ -26,6 +26,12 @@ def get_words():
     return jsonify(result), 200
 
 
+@wordbook_bp.route("/gemini-status", methods=["GET"])
+def get_gemini_status():
+    result = WordService.get_gemini_status()
+    return jsonify(result), 200
+
+
 @wordbook_bp.route("", methods=["POST"])
 def create_word():
     data = _get_request_data()

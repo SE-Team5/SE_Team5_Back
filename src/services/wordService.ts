@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from './apiBase'
+import { requestJson } from './apiBase'
 
 export interface Word {
   id: string
@@ -19,6 +19,12 @@ export type WordRelations = {
   synonym: WordRelation[]
   antonym: WordRelation[]
   homonym: WordRelation[]
+}
+
+export type GeminiStatus = {
+  configured: boolean
+  valid: boolean
+  message: string
 }
 
 type BackendWord = {
@@ -59,7 +65,7 @@ type PaginatedWordResponse = {
   words?: BackendWord[]
 }
 
-const API_BASE_URL = getApiBaseUrl('/_/backend/api')
+const API_BASE_URL = '/_/backend/api'
 
 function toWord(word: BackendWord): Word {
   const toRelation = (items?: Array<{ id?: string | number; english?: string; korean?: string; example?: string | null }>) =>
@@ -94,21 +100,7 @@ function toBackendPayload(word: Omit<Word, 'id'>) {
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options?.headers || {}),
-    },
-    ...options,
-  })
-
-  const data = await response.json().catch(() => ({}))
-  if (!response.ok) {
-    const message = typeof data?.message === 'string' ? data.message : 'Request failed'
-    throw new Error(message)
-  }
-
-  return data as T
+  return requestJson<T>(API_BASE_URL, path, options)
 }
 
 function parseCsvLine(line: string, delimiter = ','): string[] {
@@ -275,5 +267,9 @@ export const wordService = {
     const words = await this.getWords()
     const shuffled = [...words].sort(() => Math.random() - 0.5)
     return shuffled.slice(0, Math.min(count, shuffled.length))
+  },
+
+  async getGeminiStatus(): Promise<GeminiStatus> {
+    return request<GeminiStatus>('/wordbook/gemini-status')
   },
 }

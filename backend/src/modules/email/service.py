@@ -114,11 +114,11 @@ class EmailService:
                 # 발송
                 server.send_message(message)
             
-            print(f"✓ Inactivity email sent to {user_email}")
+            print(f"[OK] Inactivity email sent to {user_email}")
             return True
             
         except Exception as e:
-            print(f"✗ Failed to send email to {user_email}: {e}")
+            print(f"[ERR] Failed to send email to {user_email}: {e}")
             return False
 
     @staticmethod
@@ -202,5 +202,5 @@ class EmailService:
             return True
             
         except Exception as e:
-            print(f"✗ Failed to send welcome email to {user_email}: {e}")
+            print(f"[ERR] Failed to send welcome email to {user_email}: {e}")
             return False

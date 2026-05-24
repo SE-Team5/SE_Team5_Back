@@ -18,7 +18,7 @@ except ModuleNotFoundError as error:
 
 def _init_scheduler():
     if TaskScheduler is None:
-        print("⚠ APScheduler is not installed in the active Python environment. Scheduler jobs are disabled.")
+        print("[WARN] APScheduler is not installed in the active Python environment. Scheduler jobs are disabled.")
         return
 
     TaskScheduler.init()
@@ -39,7 +39,7 @@ def create_app():
     try:
         db.connect()
     except Exception as e:
-        print(f"⚠ Warning: Database connection failed on startup: {e}")
+        print(f"[WARN] Database connection failed on startup: {e}")
     
     # 블루프린트 자동 탐지 및 등록
     register_blueprints(app)
@@ -73,16 +73,16 @@ def register_blueprints(app):
                 if hasattr(module, bp_name):
                     blueprint = getattr(module, bp_name)
                     app.register_blueprint(blueprint)
-                    print(f"✓ Registered blueprint: {module_name}")
+                    print(f"[OK] Registered blueprint: {module_name}")
                 else:
-                    print(f"⚠ Blueprint '{bp_name}' not found in {module_name}")
+                    print(f"[WARN] Blueprint '{bp_name}' not found in {module_name}")
             except Exception as e:
-                print(f"✗ Error loading module '{module_name}': {e}")
+                print(f"[ERR] Error loading module '{module_name}': {e}")
 
 # Vercel이 밖에서도 찾을 수 있도록 최상단에 app 객체 선언 (이 줄 추가!)
 app = create_app()
 
 if __name__ == '__main__':
     # (여기 있던 app = create_app() 은 지워도 되고 냅둬도 상관없습니다)
-    app.run(host='0.0.0.0', port=Config.PORT, debug=Config.DEBUG)
+    app.run(host='0.0.0.0', port=Config.PORT, debug=Config.DEBUG, use_reloader=False)
 

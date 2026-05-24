@@ -9,6 +9,7 @@ export default function WordbookPage() {
   const [totalWords, setTotalWords] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState('')
 
   const totalPages = Math.ceil(totalWords / ITEMS_PER_PAGE)
 
@@ -18,12 +19,16 @@ export default function WordbookPage() {
 
   const loadWords = async () => {
     setIsLoading(true)
+    setErrorMessage('')
     try {
       const result = await wordService.getWordsPaginated(currentPage, ITEMS_PER_PAGE)
       setWords(result.words)
       setTotalWords(result.total)
     } catch (error) {
       console.error('Failed to load words:', error)
+      setWords([])
+      setTotalWords(0)
+      setErrorMessage('단어장을 불러오지 못했습니다. 서버 연결을 확인해주세요.')
     } finally {
       setIsLoading(false)
     }
@@ -59,6 +64,16 @@ export default function WordbookPage() {
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : errorMessage ? (
+          <div className="bg-card rounded-2xl border border-border p-8 text-center shadow-sm">
+            <p className="text-foreground font-medium mb-2">{errorMessage}</p>
+            <p className="text-sm text-muted-foreground">잠시 후 다시 시도해보세요.</p>
+          </div>
+        ) : words.length === 0 ? (
+          <div className="bg-card rounded-2xl border border-border p-8 text-center shadow-sm">
+            <p className="text-foreground font-medium mb-2">등록된 단어가 없습니다.</p>
+            <p className="text-sm text-muted-foreground">관리자 페이지에서 단어를 추가해주세요.</p>
           </div>
         ) : (
           <>

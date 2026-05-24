@@ -9,6 +9,7 @@ export default function DayWordbookPage() {
   const [words, setWords] = useState<Word[]>([])
   const [expandedIds, setExpandedIds] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState('')
   const userNo = user?.id ? Number(user.id) : undefined
 
   useEffect(() => {
@@ -17,11 +18,14 @@ export default function DayWordbookPage() {
 
   const loadDailyWords = async () => {
     setIsLoading(true)
+    setErrorMessage('')
     try {
       const dailyWords = await wordService.getDailyWords(10, userNo)
       setWords(dailyWords)
     } catch (error) {
       console.error('Failed to load daily words:', error)
+      setWords([])
+      setErrorMessage('Day 단어장을 불러오지 못했습니다. 로그인 상태와 서버 연결을 확인해주세요.')
     } finally {
       setIsLoading(false)
     }
@@ -63,6 +67,16 @@ export default function DayWordbookPage() {
         {isLoading ? (
           <div className="flex items-center justify-center py-24">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          </div>
+        ) : errorMessage ? (
+          <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+            <p className="font-medium text-foreground mb-2">{errorMessage}</p>
+            <p className="text-sm text-muted-foreground">한 번 로그아웃 후 다시 로그인하면 해결되는 경우가 많습니다.</p>
+          </div>
+        ) : words.length === 0 ? (
+          <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+            <p className="font-medium text-foreground mb-2">오늘 보여줄 단어가 없습니다.</p>
+            <p className="text-sm text-muted-foreground">학습 가능한 단어가 아직 없거나 모두 학습 완료되었을 수 있습니다.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4">

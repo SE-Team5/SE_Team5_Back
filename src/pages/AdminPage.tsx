@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { wordService, type Word } from '@/services/wordService'
+import { wordService, type Word, type GeminiStatus } from '@/services/wordService'
 import { toast } from 'sonner'
 import { Settings, Plus, Pencil, Trash2, Upload, Loader2, X } from 'lucide-react'
 
@@ -8,6 +8,8 @@ type ModalMode = 'add' | 'edit' | null
 export default function AdminPage() {
   const [words, setWords] = useState<Word[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isCheckingGemini, setIsCheckingGemini] = useState(true)
+  const [geminiStatus, setGeminiStatus] = useState<GeminiStatus | null>(null)
   const [modalMode, setModalMode] = useState<ModalMode>(null)
   const [editingWord, setEditingWord] = useState<Word | null>(null)
   const [formData, setFormData] = useState({ english: '', korean: '', example: '' })
@@ -19,6 +21,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     loadWords()
+    loadGeminiStatus()
   }, [])
 
   const loadWords = async () => {
@@ -31,6 +34,19 @@ export default function AdminPage() {
       toast.error('단어를 불러오는데 실패했습니다.')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const loadGeminiStatus = async () => {
+    setIsCheckingGemini(true)
+    try {
+      const status = await wordService.getGeminiStatus()
+      setGeminiStatus(status)
+    } catch (error) {
+      console.error('Failed to load Gemini status:', error)
+      setGeminiStatus(null)
+    } finally {
+      setIsCheckingGemini(false)
     }
   }
 
@@ -183,6 +199,36 @@ export default function AdminPage() {
           </div>
         </div>
 
+        <div
+          className={`mb-6 rounded-xl border px-4 py-3 text-sm ${
+            isCheckingGemini
+              ? 'border-border bg-secondary/40 text-muted-foreground'
+              : geminiStatus?.valid
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                : geminiStatus?.configured
+                  ? 'border-amber-200 bg-amber-50 text-amber-700'
+                  : 'border-border bg-secondary/40 text-muted-foreground'
+          }`}
+        >
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              AI를 통한 예문 자동생성은 유효한 API 키가 있을 때만 동작하고, 키가 없거나 잘못되면 기본 예문으로 채워집니다.
+            </div>
+            <div className="shrink-0 text-xs font-medium">
+              {isCheckingGemini
+                ? 'API 키 상태 확인 중...'
+                : geminiStatus?.valid
+                  ? 'API 키 유효'
+                  : geminiStatus?.configured
+                    ? 'API 키 확인 필요'
+                    : 'API 키 미설정'}
+            </div>
+          </div>
+          {!isCheckingGemini && geminiStatus?.message ? (
+            <div className="mt-1 text-xs opacity-90">{geminiStatus.message}</div>
+          ) : null}
+        </div>
+
         {/* Word List */}
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
@@ -312,9 +358,12 @@ export default function AdminPage() {
                 <label htmlFor="example" className="block text-sm font-medium text-foreground mb-2">
                   예문 <span className="text-muted-foreground">(선택)</span>
                 </label>
-                <input
+                <p className="mb-2 text-xs text-muted-foreground">
+                  비워두면 자동 생성됩니다. AI 예문은 유효한 API 키가 있을 때만 사용됩니다.
+                </p>
+                <textarea
                   id="example"
-                  type="text"
+                  rows={4}
                   value={formData.example}
                   onChange={(e) => setFormData(prev => ({ ...prev, example: e.target.value }))}
                   className="w-full px-4 py-3 rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"

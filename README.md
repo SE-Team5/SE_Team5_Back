@@ -40,8 +40,8 @@ python backend\__main__.py
 프로젝트 루트 폴더에서 아래 명령을 실행합니다.
 
 ```bash
-pnpm install
-pnpm dev
+npm install
+npm dev
 ```
 
 백엔드는 기본적으로 `http://localhost:5000`, 프론트엔드는 `http://localhost:5173`에서 실행됩니다.

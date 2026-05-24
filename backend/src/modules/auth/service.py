@@ -389,6 +389,28 @@ LIVO 비밀번호 초기화가 완료되었습니다.
             }
         }
 
+    def get_current_user(self, auth_header):
+        """현재 로그인한 사용자 정보를 토큰에서 조회"""
+        token_info = self.is_valid_access_token(auth_header)
+        if not token_info:
+            return {"status": "error", "message": "인증 토큰이 유효하지 않습니다."}
+
+        user = self.repository.get_user_by_user_no(token_info['user_no'])
+        if not user:
+            return {"status": "error", "message": "사용자 정보를 찾을 수 없습니다."}
+
+        return {
+            "status": "success",
+            "success": True,
+            "user": {
+                "id": user['user_no'],
+                "username": user['user_id'],
+                "nickname": user['user_nickname'],
+                "email": user['email'],
+                "role": user['role'],
+            }
+        }
+
     def change_password(self, auth_header, current_password, new_password):
         """비밀번호 변경"""
         token_info = self.is_valid_access_token(auth_header)

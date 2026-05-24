@@ -1,8 +1,74 @@
 """Wordbook Service"""
+from functools import lru_cache
+
+import google.generativeai as genai
+from config import Config
 from .repository import WordRepository, UserWordStatusRepository, UserRepository
 
 
+@lru_cache(maxsize=1)
+def _probe_gemini_api_key(api_key):
+    if not api_key:
+        return {
+            "configured": False,
+            "valid": False,
+            "message": "Gemini API 키가 설정되지 않았습니다.",
+        }
+
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        response = model.generate_content('Reply with OK.')
+        generated = (getattr(response, 'text', '') or '').strip()
+
+        return {
+            "configured": True,
+            "valid": True,
+            "message": 'Gemini API 키가 유효합니다.' if generated else 'Gemini API 키가 유효합니다.',
+        }
+    except Exception:
+        return {
+            "configured": True,
+            "valid": False,
+            "message": 'Gemini API 키가 유효하지 않습니다.',
+        }
+
+
 class WordService:
+    @staticmethod
+    def _build_fallback_example(term, definition):
+        safe_term = term.strip()
+        return f'I used the word "{safe_term}" in a sentence today.'
+
+    @staticmethod
+    def _generate_example_with_gemini(term, definition):
+        """Gemini API를 이용해 영어 예문을 자동 생성. 실패 시 None 반환."""
+        api_key = Config.GEMINI_API_KEY
+        if not api_key:
+            return WordService._build_fallback_example(term, definition)
+        try:
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel('gemini-2.5-flash')
+            prompt = (
+                f'Write one natural English example sentence using the word "{term}" '
+                f'(Korean meaning: {definition}). '
+                f'Output only the sentence, nothing else.'
+            )
+            response = model.generate_content(prompt)
+            generated = (getattr(response, 'text', '') or '').strip()
+            if generated:
+                return generated
+
+            print('[WARN] Gemini returned an empty example. Using fallback example.')
+        except Exception as e:
+            print(f"Gemini API 예문 생성 실패: {e}")
+
+        return WordService._build_fallback_example(term, definition)
+
+    @staticmethod
+    def get_gemini_status():
+        return _probe_gemini_api_key(Config.GEMINI_API_KEY)
+
     @staticmethod
     def _normalize_word_payload(data):
         term = data.get("term") or data.get("english") or data.get("word_english")
@@ -41,6 +107,9 @@ class WordService:
         if existing:
             return {"message": "이미 동일한 단어가 존재합니다."}
 
+        if not example:
+            example = WordService._generate_example_with_gemini(term, definition)
+
         return WordRepository.create(term=term, definition=definition, example=example)
 
     @staticmethod
@@ -50,6 +119,9 @@ class WordService:
             return {"message": "단어를 찾을 수 없습니다."}
 
         term, definition, example = WordService._normalize_word_payload(data)
+        if not example:
+            example = WordService._generate_example_with_gemini(term or word["word_english"], definition or word["word_korean"])
+
         return WordRepository.update(
             word_id=word_id,
             term=term,
