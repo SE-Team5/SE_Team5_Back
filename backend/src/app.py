@@ -36,10 +36,10 @@ def create_app():
     CORS(app, origins=Config.CORS_ORIGINS)
     
     # 데이터베이스 연결
-#    try:
-#        db.connect()
-#   except Exception as e:
-#        print(f"[WARN] Database connection failed on startup: {e}")
+    try:
+        db.connect()
+    except Exception as e:
+        print(f"[WARN] Database connection failed on startup: {e}")
     
     # 블루프린트 자동 탐지 및 등록
     register_blueprints(app)
@@ -85,4 +85,3 @@ app = create_app()
 if __name__ == '__main__':
     # (여기 있던 app = create_app() 은 지워도 되고 냅둬도 상관없습니다)
     app.run(host='0.0.0.0', port=Config.PORT, debug=Config.DEBUG, use_reloader=False)
-
