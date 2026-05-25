@@ -15,8 +15,15 @@ class DashboardService:
             attendance_streak = user.get('attendance_streak', 0)
             today_completed = self.repo.check_today_quiz_completed(user_no)
 
-            if attendance_streak < 1:
-                attendance_streak = 1
+            if today_completed:
+                # 오늘 퀴즈 완료 → 정상 streak 표시
+                if attendance_streak < 1:
+                    attendance_streak = 1
+            else:
+                # 오늘 퀴즈 미완료 → 어제도 안 풀었으면 streak 끊김(0)
+                yesterday_completed = self.repo.check_yesterday_quiz_completed(user_no)
+                if not yesterday_completed:
+                    attendance_streak = 0
 
             return {
                 "status": "success",

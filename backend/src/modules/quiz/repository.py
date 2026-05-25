@@ -58,37 +58,45 @@ class QuizRepository:
         return db.execute_update(query, (user_no, total, correct))
 
     def has_quiz_completed_today(self, user_no):
-        """오늘 이미 퀴즈를 제출했는지 확인"""
+        """오늘(KST) 이미 퀴즈를 제출했는지 확인"""
         query = """
         SELECT COUNT(*) AS cnt
         FROM LIVO.game_records
         WHERE user_id = %s
-                    AND DATE(played_at) = DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+09:00'))
+          AND DATE(played_at) = DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+09:00'))
         """
         rows = db.execute_query(query, (user_no,))
         return bool(rows and rows[0].get('cnt', 0) > 0)
 
-    def increment_attendance_streak(self, user_no):
-        """오늘 첫 퀴즈 완료 시 연속 출석을 1 증가"""
+    def had_quiz_yesterday(self, user_no):
+        """어제(KST) 퀴즈를 완료했는지 확인"""
         query = """
-        UPDATE LIVO.users
-        SET attendance_streak = COALESCE(attendance_streak, 0) + 1,
-            attendance_today = TRUE
-        WHERE user_no = %s
+        SELECT COUNT(*) AS cnt
+        FROM LIVO.game_records
+        WHERE user_id = %s
+          AND DATE(played_at) = DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+09:00')) - INTERVAL 1 DAY
         """
-        return db.execute_update(query, (user_no,))
+        rows = db.execute_query(query, (user_no,))
+        return bool(rows and rows[0].get('cnt', 0) > 0)
 
-    def ensure_minimum_attendance_streak(self, user_no):
-        """오늘 퀴즈가 완료된 상태라면 최소 출석값을 1로 맞춤"""
-        query = """
-        UPDATE LIVO.users
-        SET attendance_streak = CASE
-                WHEN COALESCE(attendance_streak, 0) < 1 THEN 1
-                ELSE attendance_streak
-            END,
-            attendance_today = TRUE
-        WHERE user_no = %s
+    def update_attendance_streak(self, user_no):
+        """오늘 첫 퀴즈 완료 시 연속 출석 업데이트 (KST 기준).
+        어제 퀴즈 기록이 있으면 streak +1, 없으면 streak = 1 (리셋).
         """
+        if self.had_quiz_yesterday(user_no):
+            query = """
+            UPDATE LIVO.users
+            SET attendance_streak = COALESCE(attendance_streak, 0) + 1,
+                attendance_today = TRUE
+            WHERE user_no = %s
+            """
+        else:
+            query = """
+            UPDATE LIVO.users
+            SET attendance_streak = 1,
+                attendance_today = TRUE
+            WHERE user_no = %s
+            """
         return db.execute_update(query, (user_no,))
 
     def get_words_by_date_range(self, user_no, date_filter='all', limit=10):
