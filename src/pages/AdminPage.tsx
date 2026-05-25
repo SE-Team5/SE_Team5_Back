@@ -17,9 +17,16 @@ export default function AdminPage() {
   const [deleteWordId, setDeleteWordId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [isDraggingCsv, setIsDraggingCsv] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const didInitialLoadRef = useRef(false)
 
   useEffect(() => {
+    if (didInitialLoadRef.current) {
+      return
+    }
+
+    didInitialLoadRef.current = true
     loadWords()
     loadGeminiStatus()
   }, [])
@@ -126,9 +133,11 @@ export default function AdminPage() {
     }
   }
 
-  const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const uploadCsvFile = async (file: File) => {
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      toast.error('CSV 파일만 업로드할 수 있습니다.')
+      return
+    }
 
     setIsUploading(true)
     try {
@@ -155,6 +164,24 @@ export default function AdminPage() {
     }
   }
 
+  const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    await uploadCsvFile(file)
+  }
+
+  const handleCSVDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setIsDraggingCsv(false)
+
+    const file = event.dataTransfer.files?.[0]
+    if (!file) return
+
+    await uploadCsvFile(file)
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -169,26 +196,51 @@ export default function AdminPage() {
               <p className="text-muted-foreground">총 {words.length}개의 단어</p>
             </div>
           </div>
-          <div className="flex gap-3">
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary text-secondary-foreground font-medium hover:bg-secondary/80 transition-colors disabled:opacity-50"
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+            <div
+              onDragOver={(event) => {
+                event.preventDefault()
+                setIsDraggingCsv(true)
+              }}
+              onDragEnter={(event) => {
+                event.preventDefault()
+                setIsDraggingCsv(true)
+              }}
+              onDragLeave={(event) => {
+                event.preventDefault()
+                setIsDraggingCsv(false)
+              }}
+              onDrop={handleCSVDrop}
+              className={`min-w-[240px] rounded-xl border-2 border-dashed px-4 py-3 transition-colors ${
+                isDraggingCsv
+                  ? 'border-primary bg-primary/10'
+                  : 'border-border bg-secondary/20 hover:border-primary/50 hover:bg-secondary/40'
+              }`}
             >
-              {isUploading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Upload className="h-4 w-4" />
-              )}
-              <span className="hidden sm:inline">CSV 업로드</span>
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv"
-              onChange={handleCSVUpload}
-              className="hidden"
-            />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors disabled:opacity-50"
+              >
+                {isUploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
+                <span>CSV를 드래그하거나 클릭해서 업로드</span>
+              </button>
+              <p className="mt-2 text-center text-xs text-muted-foreground">
+                .csv 파일만 가능
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleCSVUpload}
+                className="hidden"
+              />
+            </div>
             <button
               onClick={handleOpenAddModal}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"

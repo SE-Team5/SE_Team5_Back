@@ -112,8 +112,7 @@ export default function DayWordbookPage() {
                       </div>
 
                       <div className="space-y-3">
-                        <RelationBlock label="유의어" items={word.relations?.synonym ?? []} />
-                        <RelationBlock label="동의어" items={word.relations?.synonym ?? []} />
+                        <RelationBlock label="유의어/동의어" items={word.relations?.synonym ?? []} />
                         <RelationBlock label="반의어" items={word.relations?.antonym ?? []} />
                       </div>
                     </div>

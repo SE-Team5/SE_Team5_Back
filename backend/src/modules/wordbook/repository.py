@@ -4,12 +4,20 @@ from db import db
 
 
 def _to_word_dict(row):
+    favorite_value = row.get("is_favorite")
+    if favorite_value is None:
+        favorite_value = row.get("is_bookmarked")
+
+    memorized_value = row.get("is_memorized")
+
     return {
         "id": str(row["word_no"]),
         "term": row["word_english"],
         "definition": row["word_korean"],
         "example": row.get("example_sentence"),
         "memo": None,
+        "is_favorite": bool(favorite_value) if favorite_value is not None else False,
+        "is_memorized": bool(memorized_value) if memorized_value is not None else False,
     }
 
 
@@ -58,17 +66,64 @@ class WordRepository:
         return sort_map.get(sort, "ORDER BY word_no DESC")
 
     @staticmethod
-    def get_words_paginated(user_id, page, per_page, sort, start_date, end_date, keyword) -> dict:
-        where_clause, params = WordRepository._build_where_clause(keyword)
+    def _build_user_status_join(user_id):
+        if not user_id:
+            return "", []
 
-        count_query = f"SELECT COUNT(*) AS total FROM LIVO.words {where_clause}"
+        return """
+            LEFT JOIN LIVO.user_words_status s
+              ON s.word_id = w.word_no AND s.user_id = %s
+        """, [user_id]
+
+    @staticmethod
+    def _build_where_conditions(keyword, filter_type, search_field):
+        conditions = []
+        params = []
+
+        if keyword:
+            like = f"%{keyword}%"
+            if search_field == "korean":
+                conditions.append("w.word_korean LIKE %s")
+                params.append(like)
+            else:
+                conditions.append("w.word_english LIKE %s")
+                params.append(like)
+
+        if filter_type == "favorite":
+            conditions.append("COALESCE(s.is_favorite, 0) = 1")
+        elif filter_type == "unmemorized":
+            conditions.append("COALESCE(s.is_memorized, 0) = 0")
+
+        if not conditions:
+            return "", params
+
+        return "WHERE " + " AND ".join(conditions), params
+
+    @staticmethod
+    def get_words_paginated(user_id, page, per_page, sort, filter_type, keyword, search_field) -> dict:
+        join_clause, join_params = WordRepository._build_user_status_join(user_id)
+        where_clause, where_params = WordRepository._build_where_conditions(keyword, filter_type, search_field)
+        params = join_params + where_params
+
+        if user_id:
+            status_select_clause = "COALESCE(s.is_favorite, 0) AS is_favorite, COALESCE(s.is_memorized, 0) AS is_memorized"
+        else:
+            status_select_clause = "0 AS is_favorite, 0 AS is_memorized"
+
+        count_query = f"SELECT COUNT(*) AS total FROM LIVO.words w {join_clause} {where_clause}"
         total_row = db.execute_query(count_query, tuple(params))
         total = total_row[0]["total"] if total_row else 0
 
         offset = max(page - 1, 0) * per_page
         select_query = f"""
-            SELECT word_no, word_english, word_korean, example_sentence
-            FROM LIVO.words
+            SELECT
+                w.word_no,
+                w.word_english,
+                w.word_korean,
+                w.example_sentence,
+                {status_select_clause}
+            FROM LIVO.words w
+            {join_clause}
             {where_clause}
             {WordRepository._order_clause(sort)}
             LIMIT %s OFFSET %s
@@ -76,6 +131,14 @@ class WordRepository:
         rows = db.execute_query(select_query, tuple(params + [per_page, offset]))
 
         items = [_to_word_dict(row) for row in rows]
+        relations = WordRepository.get_relations_by_word_ids([int(word["id"]) for word in items if word.get("id")])
+        items = [
+            {
+                **word,
+                "relations": relations.get(int(word["id"]), {"synonym": [], "antonym": [], "homonym": []}),
+            }
+            for word in items
+        ]
         pages = ceil(total / per_page) if total else 0
 
         return {
@@ -95,6 +158,77 @@ class WordRepository:
         query = "SELECT word_no, word_english, word_korean, example_sentence FROM LIVO.words WHERE word_english = %s"
         results = db.execute_query(query, (term,))
         return results[0] if results else None
+
+    @staticmethod
+    def get_relation_candidates(exclude_word_id: int | None = None) -> list:
+        if exclude_word_id is None:
+            query = """
+                SELECT word_no, word_english, word_korean, example_sentence
+                FROM LIVO.words
+                ORDER BY word_no ASC
+            """
+            rows = db.execute_query(query)
+        else:
+            query = """
+                SELECT word_no, word_english, word_korean, example_sentence
+                FROM LIVO.words
+                WHERE word_no <> %s
+                ORDER BY word_no ASC
+            """
+            rows = db.execute_query(query, (exclude_word_id,))
+
+        return [
+            {
+                "id": int(row["word_no"]),
+                "english": row["word_english"],
+                "korean": row["word_korean"],
+                "example": row.get("example_sentence"),
+            }
+            for row in rows
+        ]
+
+    @staticmethod
+    def replace_word_relations(word_id: int, relations: list[dict]) -> int:
+        WordRepository.delete_relations_by_word(word_id)
+
+        normalized = []
+        seen_word_ids = set()
+        for relation in relations:
+            related_word_id = relation.get("word_id")
+            relation_type = relation.get("relation_type")
+            if related_word_id is None or relation_type not in {"synonym", "antonym", "homonym"}:
+                continue
+
+            related_word_id = int(related_word_id)
+            if related_word_id == int(word_id) or related_word_id in seen_word_ids:
+                continue
+
+            seen_word_ids.add(related_word_id)
+            normalized.append((int(word_id), related_word_id, relation_type))
+
+        if not normalized:
+            return 0
+
+        placeholders = ",".join(["(%s, %s, %s)"] * len(normalized))
+        query = f"""
+            INSERT INTO LIVO.word_relations (word_no, related_word_no, relation_type)
+            VALUES {placeholders}
+        """
+        params = []
+        for item in normalized:
+            params.extend(item)
+
+        return db.execute_update(query, tuple(params))
+
+    @staticmethod
+    def delete_relations_by_word(word_id: int) -> int:
+        query = "DELETE FROM LIVO.word_relations WHERE word_no = %s"
+        return db.execute_update(query, (word_id,))
+
+    @staticmethod
+    def delete_relations_involving_word(word_id: int) -> int:
+        query = "DELETE FROM LIVO.word_relations WHERE word_no = %s OR related_word_no = %s"
+        return db.execute_update(query, (word_id, word_id))
 
     @staticmethod
     def create(term, definition, example=None, memo=None) -> dict:

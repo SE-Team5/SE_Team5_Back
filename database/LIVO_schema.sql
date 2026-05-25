@@ -11,6 +11,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 
 DROP TABLE IF EXISTS word_relations;
 DROP TABLE IF EXISTS user_words_status;
+DROP TABLE IF EXISTS user_pet_status;
 DROP TABLE IF EXISTS game_records;
 DROP TABLE IF EXISTS words;
 DROP TABLE IF EXISTS users;
@@ -32,6 +33,18 @@ CREATE TABLE users (
   UNIQUE KEY unique_user_id (user_id),
   UNIQUE KEY unique_email (email),
   CHECK (attendance_streak >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- user_pet_status table
+CREATE TABLE user_pet_status (
+  user_no INT NOT NULL,
+  pet_level INT NOT NULL DEFAULT 1,
+  pet_last_updated DATE DEFAULT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (user_no),
+  CONSTRAINT fk_user_pet_status_user
+    FOREIGN KEY (user_no) REFERENCES users(user_no) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- words table

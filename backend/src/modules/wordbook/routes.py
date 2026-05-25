@@ -12,16 +12,28 @@ def get_words():
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 10, type=int)
     sort = request.args.get("sort", "created_at_desc")
+    filter_type = request.args.get("filter", "all")
     keyword = request.args.get("keyword")
+    search_field = request.args.get("search_field", "english")
+    user_id = (
+        request.args.get("user_id", type=int)
+        or request.args.get("userId", type=int)
+        or request.args.get("userNo", type=int)
+    )
+
+    if filter_type != "all" and not user_id:
+        return jsonify({"message": "user_id가 필요합니다."}), 400
 
     result = WordService.get_words(
-        user_id=None,
+        user_id=user_id,
         page=page,
         per_page=per_page,
         sort=sort,
+        filter_type=filter_type,
         start_date=None,
         end_date=None,
         keyword=keyword,
+        search_field=search_field,
     )
     return jsonify(result), 200
 

@@ -6,7 +6,13 @@ export interface Word {
   korean: string
   example?: string
   relations?: WordRelations
+  isFavorite?: boolean
+  isMemorized?: boolean
 }
+
+export type WordbookFilter = 'all' | 'unmemorized' | 'favorite'
+export type WordbookSort = 'created_at_desc' | 'created_at_asc' | 'term_asc' | 'term_desc'
+export type WordbookSearchField = 'english' | 'korean'
 
 export type WordRelation = {
   id: string
@@ -36,6 +42,8 @@ type BackendWord = {
   example_sentence?: string | null
   word_english?: string
   word_korean?: string
+  is_favorite?: boolean | number
+  is_memorized?: boolean | number
   relations?: {
     synonym?: Array<{
       id?: string | number
@@ -81,6 +89,8 @@ function toWord(word: BackendWord): Word {
     english: word.term ?? word.word_english ?? '',
     korean: word.definition ?? word.word_korean ?? '',
     example: word.example ?? word.example_sentence ?? undefined,
+    isFavorite: Boolean(word.is_favorite),
+    isMemorized: Boolean(word.is_memorized),
     relations: word.relations
       ? {
           synonym: toRelation(word.relations.synonym),
@@ -205,13 +215,66 @@ export const wordService = {
     return items.map(toWord)
   },
 
-  async getWordsPaginated(page: number, limit: number = 10): Promise<{ words: Word[]; total: number }> {
-    const response = await request<PaginatedWordResponse>(`/wordbook?page=${page}&per_page=${limit}`)
+  async getWordsPaginated(
+    page: number,
+    limit: number = 10,
+    options?: {
+      filter?: WordbookFilter
+      sort?: WordbookSort
+      keyword?: string
+      searchField?: WordbookSearchField
+      userId?: string | number
+    }
+  ): Promise<{ words: Word[]; total: number }> {
+    const params = new URLSearchParams({
+      page: String(page),
+      per_page: String(limit),
+    })
+
+    if (options?.sort) {
+      params.set('sort', options.sort)
+    }
+
+    if (options?.filter) {
+      params.set('filter', options.filter)
+    }
+
+    if (options?.keyword) {
+      params.set('keyword', options.keyword)
+    }
+
+    if (options?.searchField) {
+      params.set('search_field', options.searchField)
+    }
+
+    if (options?.userId !== undefined && options?.userId !== null && String(options.userId).trim() !== '') {
+      params.set('user_id', String(options.userId))
+    }
+
+    const response = await request<PaginatedWordResponse>(`/wordbook?${params.toString()}`)
     const items = response.items ?? response.words ?? []
     return {
       words: items.map(toWord),
       total: response.total ?? items.length,
     }
+  },
+
+  async updateWordStatus(
+    wordId: string,
+    payload: {
+      userId: string | number
+      isBookmarked?: boolean
+      isMemorized?: boolean
+    }
+  ): Promise<{ word_id?: number | string; is_bookmarked?: boolean; is_memorized?: boolean }> {
+    return request<{ word_id?: number | string; is_bookmarked?: boolean; is_memorized?: boolean }>(`/wordbook/${wordId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        user_id: payload.userId,
+        is_bookmarked: payload.isBookmarked,
+        is_memorized: payload.isMemorized,
+      }),
+    })
   },
 
   async addWord(word: Omit<Word, 'id'>): Promise<Word> {
